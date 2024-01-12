@@ -1,0 +1,1 @@
+Latest controller.yaml downloaded from https://github.com/bitnami-labs/sealed-secrets/releases

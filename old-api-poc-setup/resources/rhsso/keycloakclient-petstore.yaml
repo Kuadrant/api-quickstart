@@ -1,0 +1,19 @@
+---
+# https://access.redhat.com/documentation/en-us/red_hat_single_sign-on/7.6/html/server_installation_and_configuration_guide/operator
+apiVersion: keycloak.org/v1alpha1
+kind: KeycloakClient
+metadata:
+  name: petstore
+  labels:
+    app: sso
+spec:
+  realmSelector:
+    matchLabels:
+      realm: petstore
+  client:
+    id: petstore
+    clientId: petstore
+    enabled: true
+    protocol: openid-connect
+    publicClient: true
+    directAccessGrantsEnabled: true

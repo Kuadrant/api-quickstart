@@ -1,0 +1,18 @@
+---
+# https://access.redhat.com/documentation/en-us/red_hat_single_sign-on/7.6/html/server_installation_and_configuration_guide/operator
+apiVersion: keycloak.org/v1alpha1
+kind: KeycloakUser
+metadata:
+  name: bob-petstore
+spec:
+  realmSelector:
+    matchLabels:
+      realm: petstore
+  user:
+    username: bob
+    enabled: true
+    emailVerified: true
+    credentials:
+    - type: password
+      temporary: false  # For unknown reason, this field value is not applied
+      value: p
