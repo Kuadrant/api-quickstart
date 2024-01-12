@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: multi-cluster-gateways
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: prod-web
+  namespace: multi-cluster-gateways
+spec:
+  gatewayClassName: kuadrant-multi-cluster-gateway-instance-per-cluster
+  listeners:
+  - allowedRoutes:
+      namespaces:
+        from: All
+    name: api
+    hostname: "*.$KUADRANT_ZONE_ROOT_DOMAIN"
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+        - name: apps-hcpapps-tls
+          kind: Secret
