@@ -1,0 +1,48 @@
+# shellcheck shell=bash
+
+cleanClusters() {
+	# Delete existing kind clusters
+	clusterCount=$(${KIND_BIN} get clusters | grep ${KIND_CLUSTER_PREFIX} | wc -l)
+	if ! [[ $clusterCount =~ "0" ]] ; then
+		echo "Deleting previous kuadrant clusters."
+		${KIND_BIN} get clusters | grep ${KIND_CLUSTER_PREFIX} | xargs ${KIND_BIN} delete clusters
+	fi	
+}
+
+cleanNetwork() {
+  # Delete the network
+  echo "Deleting mgc network"
+  docker network rm mgc || true
+}
+
+stopProxies() {
+  if [[ -f /tmp/dashboard_pids ]]; then
+    echo "Stopping existing proxies"
+    while read p; do
+      kill $p || true
+    done </tmp/dashboard_pids
+    rm /tmp/dashboard_pids
+  fi
+}
+
+cleanupKind() {
+  stopProxies
+  cleanClusters
+  cleanNetwork
+}
+
+cleanupMGC(){
+    kubectl delete gateway/prod-web -n multi-cluster-gateways --ignore-not-found=true || true # give controller a change to cleanup DNS records
+    kubectl wait gateway/prod-web -n multi-cluster-gateways --for=delete || true # wait with 30 sec timeout
+    kubectl delete namespace kuadrant-multi-cluster-gateways --ignore-not-found=true
+    kubectl delete namespace multi-cluster-gateways --ignore-not-found=true
+
+    ${OPERATOR_SDK_BIN} olm uninstall --timeout 6m0s || true
+
+    if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
+      for ((i = 1; i <= ${MGC_WORKLOAD_CLUSTERS_COUNT}; i++)); do
+        kubectl config use-context kind-${KIND_CLUSTER_WORKLOAD}-${i}
+        kubectl delete namespace kuadrant-multi-cluster-gateways --ignore-not-found=true
+      done
+    fi
+}

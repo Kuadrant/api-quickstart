@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: controller-manager-metrics
+  namespace: system
+spec:
+  selector:
+    control-plane: controller-manager
+  ports:
+    - protocol: TCP
+      name: metrics
+      port: 8080
+      targetPort: metrics
