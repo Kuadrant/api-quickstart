@@ -28,16 +28,25 @@ source "${SCRIPT_DIR}/.deployUtils"
 # source "${SCRIPT_DIR}/.startUtils"
 # source "${SCRIPT_DIR}/.setupEnv"
 
+# Depends on kustomize config in mgc repo, 'api-upstream' branch
 if [ -z $MGC_BRANCH ]; then
-  MGC_BRANCH=${MGC_BRANCH:="main"}
+  MGC_BRANCH=${MGC_BRANCH:="api-upstream"}
 fi
 if [ -z $MGC_ACCOUNT ]; then
   MGC_ACCOUNT=${MGC_ACCOUNT:="kuadrant"}
 fi
 
+# Ensure Thanos & Prometheus gets installed & configured
+METRICS_FEDERATION=true
+
 MGC_REPO=${MGC_REPO:="github.com/${MGC_ACCOUNT}/multicluster-gateway-controller.git"}
 QUICK_START_HUB_KUSTOMIZATION=${MGC_REPO}/config/quick-start/control-cluster
 QUICK_START_SPOKE_KUSTOMIZATION=${MGC_REPO}/config/quick-start/workload-cluster
+PROMETHEUS_DIR=${MGC_REPO}/config/prometheus
+PROMETHEUS_FOR_FEDERATION_DIR=${MGC_REPO}/config/prometheus-for-federation
+PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_KUSTOMIZATION_DIR=${PROMETHEUS_FOR_FEDERATION_DIR}/api-dashboards
+PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_GRAFANA_PATCH=https://raw.githubusercontent.com/${MGC_ACCOUNT}/multicluster-gateway-controller/${MGC_BRANCH}/config/prometheus-for-federation/api-dashboards/grafana_deployment_patch.yaml
+THANOS_DIR=${MGC_REPO}/config/thanos
 
 if [[ "${MGC_BRANCH}" != "main" ]]; then
   echo "setting MGC_REPO to use branch ${MGC_BRANCH}"
@@ -82,6 +91,18 @@ deployIngressController ${KIND_CLUSTER_CONTROL_PLANE}
 # # Deploy cert manager
 deployCertManager ${KIND_CLUSTER_CONTROL_PLANE}
 
+# Deploy Prometheus in the hub
+deployPrometheusForFederation ${KIND_CLUSTER_CONTROL_PLANE} ${PROMETHEUS_FOR_FEDERATION_DIR}?ref=${MGC_BRANCH}
+
+# Deploy Thanos components in the hub
+deployThanos ${KIND_CLUSTER_CONTROL_PLANE} ${THANOS_DIR}
+
+# Deploy Prometheus components in the hub
+deployPrometheus ${KIND_CLUSTER_CONTROL_PLANE}
+
+# Deploy API Dashboards in hub
+installAPIDashboards ${KIND_CLUSTER_CONTROL_PLANE} ${PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_KUSTOMIZATION_DIR}?ref=${MGC_BRANCH} ${PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_GRAFANA_PATCH}
+
 
 if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
   for ((i = 1; i <= ${MGC_WORKLOAD_CLUSTERS_COUNT}; i++)); do
@@ -91,6 +112,7 @@ if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
     deployOCMSpoke ${KIND_CLUSTER_WORKLOAD}-${i}
     configureManagedAddon ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
     configureClusterAsIngress ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
+    deployPrometheusForFederation ${KIND_CLUSTER_WORKLOAD}-${i} ${PROMETHEUS_FOR_FEDERATION_DIR}?ref=${MGC_BRANCH}
   done
 fi
 
