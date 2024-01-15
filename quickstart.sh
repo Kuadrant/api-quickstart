@@ -72,8 +72,16 @@ deployOCMHub ${KIND_CLUSTER_CONTROL_PLANE} "minimal"
 # Deploy Quick start kustomize
 deployQuickStartControl ${KIND_CLUSTER_CONTROL_PLANE}
 
-# Deploy MetalLb
+# # Deploy MetalLb
+deployMetalLB ${KIND_CLUSTER_CONTROL_PLANE} ${metalLBSubnetStart}
 configureMetalLB ${KIND_CLUSTER_CONTROL_PLANE} ${metalLBSubnetStart}
+
+# Deploy ingress controller
+deployIngressController ${KIND_CLUSTER_CONTROL_PLANE}
+
+# # Deploy cert manager
+deployCertManager ${KIND_CLUSTER_CONTROL_PLANE}
+
 
 if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
   for ((i = 1; i <= ${MGC_WORKLOAD_CLUSTERS_COUNT}; i++)); do
