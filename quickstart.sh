@@ -88,7 +88,7 @@ configureMetalLB ${KIND_CLUSTER_CONTROL_PLANE} ${metalLBSubnetStart}
 # Deploy ingress controller
 deployIngressController ${KIND_CLUSTER_CONTROL_PLANE}
 
-# # Deploy cert manager
+# Deploy cert manager
 deployCertManager ${KIND_CLUSTER_CONTROL_PLANE}
 
 # Deploy Prometheus in the hub
@@ -102,6 +102,9 @@ deployPrometheus ${KIND_CLUSTER_CONTROL_PLANE}
 
 # Deploy API Dashboards in hub
 installAPIDashboards ${KIND_CLUSTER_CONTROL_PLANE} ${PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_KUSTOMIZATION_DIR}?ref=${MGC_BRANCH} ${PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_GRAFANA_PATCH}
+
+# Deploy Apicurito to the hub
+deployApicurito ${KIND_CLUSTER_CONTROL_PLANE}
 
 
 if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
