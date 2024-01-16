@@ -107,8 +107,8 @@ installAPIDashboards ${KIND_CLUSTER_CONTROL_PLANE} ${PROMETHEUS_FOR_FEDERATION_A
 deployApicurito ${KIND_CLUSTER_CONTROL_PLANE}
 
 
-if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
-  for ((i = 1; i <= ${MGC_WORKLOAD_CLUSTERS_COUNT}; i++)); do
+if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
+  for ((i = 1; i <= ${API_WORKLOAD_CLUSTERS_COUNT}; i++)); do
     deployQuickStartWorkload ${KIND_CLUSTER_WORKLOAD}-${i}
     configureMetalLB ${KIND_CLUSTER_WORKLOAD}-${i} $((${metalLBSubnetStart} + ${i}))
     deployOLM ${KIND_CLUSTER_WORKLOAD}-${i}
