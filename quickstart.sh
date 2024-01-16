@@ -47,6 +47,7 @@ PROMETHEUS_FOR_FEDERATION_DIR=${MGC_REPO}/config/prometheus-for-federation
 PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_KUSTOMIZATION_DIR=${PROMETHEUS_FOR_FEDERATION_DIR}/api-dashboards
 PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_GRAFANA_PATCH=https://raw.githubusercontent.com/${MGC_ACCOUNT}/multicluster-gateway-controller/${MGC_BRANCH}/config/prometheus-for-federation/api-dashboards/grafana_deployment_patch.yaml
 THANOS_DIR=${MGC_REPO}/config/thanos
+GATEKEEPER_DIR=${MGC_REPO}/config/gatekeeper
 
 if [[ "${MGC_BRANCH}" != "main" ]]; then
   echo "setting MGC_REPO to use branch ${MGC_BRANCH}"
@@ -106,6 +107,10 @@ installAPIDashboards ${KIND_CLUSTER_CONTROL_PLANE} ${PROMETHEUS_FOR_FEDERATION_A
 # Deploy Apicurito to the hub
 deployApicurito ${KIND_CLUSTER_CONTROL_PLANE}
 
+deployGatekeeper ${KIND_CLUSTER_CONTROL_PLANE}
+
+configureGatekeeper ${KIND_CLUSTER_CONTROL_PLANE}
+
 
 if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
   for ((i = 1; i <= ${MGC_WORKLOAD_CLUSTERS_COUNT}; i++)); do
@@ -116,6 +121,8 @@ if [[ -n "${MGC_WORKLOAD_CLUSTERS_COUNT}" ]]; then
     configureManagedAddon ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
     configureClusterAsIngress ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
     deployPrometheusForFederation ${KIND_CLUSTER_WORKLOAD}-${i} ${PROMETHEUS_FOR_FEDERATION_DIR}?ref=${MGC_BRANCH}
+    deployGatekeeper ${KIND_CLUSTER_WORKLOAD}-${i}
+    configureGatekeeper ${KIND_CLUSTER_WORKLOAD}-${i}
   done
 fi
 

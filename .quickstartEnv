@@ -10,11 +10,12 @@ dockerBinCmd() {
   if [ ! -z ${KIND_CLUSTER_DOCKER_NETWORK} ]; then
     network=" --network ${KIND_CLUSTER_DOCKER_NETWORK}"
   fi
-  echo "docker run --rm -u $UID -v ${TMP_DIR}:/tmp/api:z${network} -e KUBECONFIG=/tmp/api/kubeconfig --entrypoint=$1 $TOOLS_IMAGE"
+  
+  local configDir="$(dirname "${BASH_SOURCE[0]}")/config"
+  local configVolume=" -v ${configDir}:${configDir}"
+
+  echo "docker run --rm -u $UID -v ${TMP_DIR}:/tmp/api:z${configVolume}${network} -e KUBECONFIG=/tmp/api/kubeconfig --entrypoint=$1 $TOOLS_IMAGE"
 }
-
-export KUSTOMIZE_BIN=$(dockerBinCmd "kustomize")
-
 
 export KIND_CLUSTER_PREFIX="api-"
 export KIND_CLUSTER_CONTROL_PLANE="${KIND_CLUSTER_PREFIX}control-plane"
