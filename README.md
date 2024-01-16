@@ -1,9 +1,5 @@
 # API Quickstart
 
-## Run
-
-`./quickstart.sh`
-
 
 ## Introduction
 
@@ -29,7 +25,7 @@ Run the following command, choosing `aws` as the dns provider:
 <!-- TODO: Change to a curl command that fetches everything remotely -->
 
 ```bash
-MGC_LOCAL_QUICKSTART_SCRIPTS_MODE=true MGC_BRANCH=api-upstream ./hack/quickstart-setup-api.sh
+`./quickstart.sh`
 ```
 
 ### Create a gateway
@@ -99,9 +95,30 @@ Open Platform Engineer Dashboard in Grafana to see:
 
 ### API Setup
 
+<!-- TODO: Make this repo public somewhere -->
+
+Fork and clone the Petstore App at https://github.com/Kuadrant/api-poc-petstore.
+
+```bash
+cd ~
+git clone git@github.com:<your_github_username>/api-poc-petstore
+```
+
+Then deploy it to the first workload cluster:
+
+```bash
+cd ~/api-poc-petstore
+kubectl --context kind-api-workload-1 apply -k ./resources/
+```
+
+Configure the app `REGION` to be `eu`:
+
+```bash
+kubectl --context kind-api-workload-1 apply -k ./resources/local-cluster/
+```
+
 TODO
 
-* Deploy the petstore app to 1 cluster
 * Open api spec in apicurio studio, showing x-kuadrant extensions & making requests (with swagger) to the show rate limit policy
 * Modify x-kuadrant extension to change rate limit
 * Export spec and generate resources with kuadrantctl
@@ -114,7 +131,18 @@ TODO
 
 TODO
 
-* Deploy the petstore to 2nd cluster (assuming deployed via manifestwork or argocd, can update a placement)
+Deploy the petstore to 2nd cluster:
+
+```bash
+cd ~/api-poc-petstore
+kubectl --context kind-api-workload-2 apply -k ./resources/
+```
+
+Configure the app `REGION` to be `us`:
+
+```bash
+kubectl --context kind-api-workload-2 apply -k ./resources/spoke-cluster/
+```
 
 e.g.
 
