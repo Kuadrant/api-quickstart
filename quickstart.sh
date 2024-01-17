@@ -53,8 +53,8 @@ if [[ "${MGC_BRANCH}" != "main" ]]; then
   echo "setting MGC_REPO to use branch ${MGC_BRANCH}"
   QUICK_START_HUB_KUSTOMIZATION=${QUICK_START_HUB_KUSTOMIZATION}?ref=${MGC_BRANCH}
   QUICK_START_SPOKE_KUSTOMIZATION=${QUICK_START_SPOKE_KUSTOMIZATION}?ref=${MGC_BRANCH}
-  echo "set QUICK_START_HUB_KUSTOMIZATION to ${QUICK_START_HUB_KUSTOMIZATION}"
-  echo "set QUICK_START_SPOKE_KUSTOMIZATION to ${QUICK_START_SPOKE_KUSTOMIZATION}"
+  # echo "set QUICK_START_HUB_KUSTOMIZATION to ${QUICK_START_HUB_KUSTOMIZATION}"
+  # echo "set QUICK_START_SPOKE_KUSTOMIZATION to ${QUICK_START_SPOKE_KUSTOMIZATION}"
 fi  
 
 # Check for required env-vars
@@ -82,10 +82,6 @@ deployOCMHub ${KIND_CLUSTER_CONTROL_PLANE} "minimal"
 # Deploy Quick start kustomize
 deployQuickStartControl ${KIND_CLUSTER_CONTROL_PLANE}
 
-# # Deploy MetalLb
-deployMetalLB ${KIND_CLUSTER_CONTROL_PLANE} ${metalLBSubnetStart}
-configureMetalLB ${KIND_CLUSTER_CONTROL_PLANE} ${metalLBSubnetStart}
-
 # Deploy ingress controller
 deployIngressController ${KIND_CLUSTER_CONTROL_PLANE}
 
@@ -111,11 +107,12 @@ deployGatekeeper ${KIND_CLUSTER_CONTROL_PLANE}
 
 configureGatekeeper ${KIND_CLUSTER_CONTROL_PLANE}
 
+setupDemoResources ${KIND_CLUSTER_CONTROL_PLANE}
+
 
 if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
   for ((i = 1; i <= ${API_WORKLOAD_CLUSTERS_COUNT}; i++)); do
     deployQuickStartWorkload ${KIND_CLUSTER_WORKLOAD}-${i}
-    configureMetalLB ${KIND_CLUSTER_WORKLOAD}-${i} $((${metalLBSubnetStart} + ${i}))
     deployOLM ${KIND_CLUSTER_WORKLOAD}-${i}
     deployOCMSpoke ${KIND_CLUSTER_WORKLOAD}-${i}
     configureManagedAddon ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
