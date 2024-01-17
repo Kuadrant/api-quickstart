@@ -41,55 +41,126 @@ kubectl --context kind-mgc-control-plane describe gateway -n multi-cluster-gatew
 kubectl --context kind-mgc-control-plane describe tlspolicy -n multi-cluster-gateways
 ```
 
-### Guard Rails: Show Constraint warnings about missing policies ( DNS, AuthPolicy, RLP)
+### Guard Rails: Constraint warnings about missing policies ( DNS, AuthPolicy, RLP)
+Running the quick start script above will bring up [Gatekeeper](https://open-policy-agent.github.io/gatekeeper/website/docs) and the following configurations: 
 
-<!-- TODO: Instructions how to get to the dashboard -->
+* Constraint Template
+    * RequirePolicyTargetingGateway
+* Constraints
+    * require-dnspolicy-targeting-gateway (Warn)
+    * require-authpolicy-targeting-gateway (Warn)
+    * require-ratelimitpolicy-targeting-gateway (Warn)
+* Mutation
+    * authpolicy-mutation
+
+To get the above constraints and constraint templates run:
+```bash
+kubectl --context kind-mgc-control-plane get constraint -A  -o yaml
+kubectl --context kind-mgc-control-plane get constrainttemplates -A  -o yaml
+kubectl --context kind-mgc-control-plane get mutations -A  -o yaml
+
+```
+**Note:** :exclamation: Since a gateway has been created the constraints will be active and will be in violation until the polices are created. 
+
+#### Grafana dashboard view
+To get a top level view of the constraints in violation, the platform engineer dashboard can be used. This can be accessed by:
+* Following the grafana link that would have been printed towards the end of the quickstart script you ran earlier.
+
+Grafana will be set up with a **username** `admin` and **password** `admin` use these to login to see the dashboards.
+
+The few most relevant for a platform engineer is called `Stitch: Platform Engineer Dashboard` or `Stitch: Gatekeeper`
 
 ### Create missing Policies
 
-<!-- TODO: Guard Rails: Show Constraint warnings about missing policies ( DNS, AuthPolicy, RLP) -->
-
+#### DNSPolicy
 Create a DNSPolicy:
 
-<!-- TODO: Import dnspolicy from platform-engineer repo into this repo -->
+```bash
+kubectl --context kind-api-control-plane apply -f - <<EOF
+apiVersion: kuadrant.io/v1alpha1
+kind: DNSPolicy
+metadata:
+  name: prod-web
+  namespace: multi-cluster-gateways
+spec:
+  targetRef:
+    name: prod-web
+    group: gateway.networking.k8s.io
+    kind: Gateway
+  loadBalancing:
+    geo:
+      defaultGeo: EU
+EOF
+```
+####  Route 53 DNS Zone
+
+When the DNS Policy has been created, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Please navigate to Route53 and ensure they are present. The record will have `petstore` in its name
+
+#### RateLimitPolicy 
+Create a Gateway-wide RateLimitPolicy
 
 ```bash
-envsubst < ./resources/dnspolicy.yaml | kubectl --context kind-mgc-control-plane apply -f -
-kubectl --context kind-mgc-control-plane describe dnspolicy prod-web -n multi-cluster-gateways
+kubectl --context kind-api-control-plane apply -f - <<EOF
+apiVersion: kuadrant.io/v1beta2
+kind: RateLimitPolicy
+metadata:
+  name: prod-web
+  namespace: multi-cluster-gateways
+spec:
+  targetRef:
+    name: prod-web
+    group: gateway.networking.k8s.io
+    kind: Gateway
+  limits:
+    "global":
+      rates:
+      - limit: 10
+        duration: 10
+        unit: second
+EOF
 ```
-
-View ns entries in Route 53 DNS Zone
-
-<!-- TODO: Instructions how to find ns entries in route53 zone -->
-
-Create and configure a Gateway-wide RateLimitPolicy
-
-<!-- TODO: Import ratelimitpolicy from platform-engineer repo into this repo -->
+#### Authpolicy
+Create a Gateway-wide AuthPolicy
 
 ```bash
-kubectl --context kind-mgc-control-plane apply -f ./resources/ratelimitpolicy.yaml
-kubectl --context kind-mgc-control-plane describe ratelimitpolicy prod-web -n multi-cluster-gateways
+kubectl --context kind-api-control-plane apply -f - <<EOF
+apiVersion: kuadrant.io/v1beta2
+kind: AuthPolicy
+metadata:
+  name: gw-auth
+  namespace: kuadrant-multi-cluster-gateways
+spec:
+  targetRef:
+    group: gateway.networking.k8s.io
+    kind: Gateway
+    name: prod-web
+  rules:
+    authorization:
+      deny-all:
+        opa:
+          rego: "allow = false"
+    response:
+      unauthorized:
+        headers:
+          "content-type":
+            value: application/json
+        body:
+          value: |
+            {
+              "error": "Forbidden",
+              "message": "Access denied by default by the gateway operator. If you are the administrator of the service, create a specific auth policy for the route."
+            }
+EOF
 ```
-
-Create and configure a Gateway-wide AuthPolicy
-
-<!-- TODO: Import authpolicy from platform-engineer repo into this repo -->
-
-```bash
-kubectl --context kind-mgc-control-plane apply -f ./resources/authpolicy.yaml
-kubectl --context kind-mgc-control-plane describe authpolicy gw-auth -n multi-cluster-gateways
-```
-
 ### Platform Overview
 
-Open Platform Engineer Dashboard in Grafana to see:
+Since we have created all the policies that Gatekeeper had the guardrails around, you should no longer see any constraints in violation. To check this from a high level go back to the dashboards from the previous step and ensure the violations are no longer present.
 
-<!-- TODO: Instructions how to get to the dashboard -->
+As we have created these policies the dashboard will be populated with more useful data including information about:
+* Gateways & Policies
+* TLSPolicy, DNSPolicy, AuthPolicy and RateLimitPolicy
 
-* Gateways & Policies - Gateway Policies created
-* No Route Policies yet (as no APIs/Apps deployed yet) - Can see a TLSPolicy, DNSPolicy, AuthPolicy and RateLimitPolicy
-* Constraints & Violations - Highlight no more violations
-* APIs Summary - Highlight there are no APIs yet
+In the next step as a App developer you will get additional info like API summaries and route policies.
 
 ## App Developer Steps
 
