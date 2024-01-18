@@ -654,7 +654,7 @@ deployGatekeeper(){
   kubectl config use-context kind-${clusterName}
   echo "Deploying Gatekeeper in kind-${clusterName}"
   ${HELM_BIN} repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts
-  ${HELM_BIN} install gatekeeper/gatekeeper --name-template=gatekeeper --namespace gatekeeper-system --create-namespace
+  ${HELM_BIN} install gatekeeper/gatekeeper --set replicas=1 --name-template=gatekeeper --namespace gatekeeper-system --create-namespace
   kubectl --context kind-${clusterName} wait --namespace=gatekeeper-system --for=condition=available --timeout=300s deployment/gatekeeper-audit
   kubectl --context kind-${clusterName} wait --namespace=gatekeeper-system --for=condition=available --timeout=300s deployment/gatekeeper-controller-manager
   echo "Gatekeeper Ready"
