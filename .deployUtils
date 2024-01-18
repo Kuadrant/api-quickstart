@@ -281,16 +281,6 @@ deployIstio() {
 	kubectl apply -f  ${ISTIO_KUSTOMIZATION_DIR}
 }
 
-installGatewayAPI() {
-  local GATEWAY_API_KUSTOMIZATION_DIR=${LOCAL_SETUP_DIR}/../config/gateway-api
-  clusterName=${1}
-  kubectl config use-context kind-${clusterName}
-  echo "Installing Gateway API in ${clusterName}"
-
-  ${KUSTOMIZE_BIN} build ${GATEWAY_API_KUSTOMIZATION_DIR} | kubectl apply -f -
-}
-
-
 deployRedis(){
   clusterName=${1}
 
@@ -551,26 +541,26 @@ configureController() {
 
 
 deployQuickStartControl() {
-    clusterName=${1}
-    kubectl config use-context kind-${clusterName}
-    echo "Initialize quickstart setup on ${clusterName}"
-    wait_for "${KUSTOMIZE_BIN} --load-restrictor LoadRestrictionsNone build ${QUICK_START_HUB_KUSTOMIZATION} --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -" "${QUICK_START_HUB_KUSTOMIZATION} control cluster config apply" "1m" "5"
-    echo "Waiting for metallb-system deployments to be ready"
-    kubectl -n metallb-system wait --for=condition=ready pod --selector=app=metallb --timeout=300s
-    echo "Waiting for cert-manager deployments to be ready"
-    kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
+  clusterName=${1}
+  kubectl config use-context kind-${clusterName}
+  echo "Initialize quickstart setup on ${clusterName}"
+  wait_for "${KUSTOMIZE_BIN} --load-restrictor LoadRestrictionsNone build ${QUICK_START_HUB_KUSTOMIZATION} --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -" "${QUICK_START_HUB_KUSTOMIZATION} control cluster config apply" "1m" "5"
+  echo "Waiting for metallb-system deployments to be ready"
+  kubectl -n metallb-system wait --for=condition=ready pod --selector=app=metallb --timeout=300s
+  echo "Waiting for cert-manager deployments to be ready"
+  kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
 }
 
 deployQuickStartWorkload() {
-   clusterName=${1}
-    kubectl config use-context kind-${clusterName}
-    echo "Initialize quickstart setup on ${clusterName}"
-    wait_for "${KUSTOMIZE_BIN} --load-restrictor LoadRestrictionsNone build ${QUICK_START_SPOKE_KUSTOMIZATION} --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -" "${QUICK_START_SPOKE_KUSTOMIZATION} workload cluster config apply" "1m" "5"
-    echo "Waiting for metallb-system deployments to be ready"
-    kubectl -n metallb-system wait --for=condition=ready pod --selector=app=metallb --timeout=300s
-    echo "Waiting for istio deployments to be ready"
-    kubectl -n istio-operator wait --timeout=300s --for=condition=Available deployments --all
-    wait_for "kubectl -n istio-system wait --for=condition=Available deployments --all" "istio-system deployments" "300s" "20"
+  clusterName=${1}
+  kubectl config use-context kind-${clusterName}
+  echo "Initialize quickstart setup on ${clusterName}"
+  wait_for "${KUSTOMIZE_BIN} --load-restrictor LoadRestrictionsNone build ${QUICK_START_SPOKE_KUSTOMIZATION} --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -" "${QUICK_START_SPOKE_KUSTOMIZATION} workload cluster config apply" "1m" "5"
+  echo "Waiting for metallb-system deployments to be ready"
+  kubectl -n metallb-system wait --for=condition=ready pod --selector=app=metallb --timeout=300s
+  echo "Waiting for istio deployments to be ready"
+  kubectl -n istio-operator wait --timeout=300s --for=condition=Available deployments --all
+  wait_for "kubectl -n istio-system wait --for=condition=Available deployments --all" "istio-system deployments" "300s" "20"
 }
 
 configureClusterAsIngress() {
@@ -676,4 +666,43 @@ configureGatekeeper() {
   kubectl create namespace opa-exporter --dry-run=client -o yaml | kubectl apply -f - 
   ${KUSTOMIZE_BIN} build ${GATEKEEPER_KUSTOMIZATION_DIR}/constraint-templates | kubectl apply -f -
   ${KUSTOMIZE_BIN} build ${GATEKEEPER_KUSTOMIZATION_DIR} | kubectl apply -f -
+}
+
+
+createAWSCredentialsSecret() {
+  clusterName=${1}
+  local GATEWAY_CONFIG=${LOCAL_SETUP_DIR}/config/gateway
+  envsubst < ${GATEWAY_CONFIG}/aws_credentials_secret.yaml | kubectl --context kind-$clusterName apply -f -
+}
+
+createManagedZone() {
+  clusterName=${1}
+  local GATEWAY_CONFIG=${LOCAL_SETUP_DIR}/config/gateway
+  envsubst < ${GATEWAY_CONFIG}/managedzone.yaml | kubectl --context kind-$clusterName apply -f -
+}
+
+createGateway() {
+  clusterName=${1}
+  local GATEWAY_CONFIG=${LOCAL_SETUP_DIR}/config/gateway
+  envsubst < ${GATEWAY_CONFIG}/gateway.yaml | kubectl --context kind-$clusterName apply -f -
+}
+
+createTLSPolicy() {
+  clusterName=${1}
+  local GATEWAY_CONFIG=${LOCAL_SETUP_DIR}/config/gateway
+  envsubst < ${GATEWAY_CONFIG}/tlspolicy.yaml | kubectl --context kind-$clusterName apply -f -
+}
+
+placeGateway() {
+  clusterName=${1}
+  kubectl --context kind-$clusterName label gateway prod-web "cluster.open-cluster-management.io/placement"="http-gateway" -n multi-cluster-gateways
+}
+
+setupDemoResources() {
+  clusterName=${1}
+  createAWSCredentialsSecret ${clusterName}
+  createManagedZone ${clusterName}
+  createGateway ${clusterName}
+  createTLSPolicy ${clusterName}
+  placeGateway ${clusterName}
 }

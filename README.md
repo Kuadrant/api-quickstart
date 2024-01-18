@@ -168,7 +168,7 @@ In the next step as a App developer you will get additional info like API summar
 
 <!-- TODO: Make this repo public somewhere -->
 
-Fork and clone the Petstore App at https://github.com/Kuadrant/api-poc-petstore.
+[Fork](https://github.com/Kuadrant/api-poc-petstore/fork) and clone the Petstore App at https://github.com/Kuadrant/api-poc-petstore.
 
 ```bash
 cd ~
@@ -187,6 +187,25 @@ Configure the app `REGION` to be `eu`:
 ```bash
 kubectl --context kind-api-workload-1 apply -k ./resources/local-cluster/
 ```
+
+### Exploring the Open API Specification
+
+In the petstore app take a look at the Open API spec:
+
+```bash
+cd ~/api-poc-petstore
+cat openapi.yaml
+# ---
+# openapi: 3.0.2
+# info:
+#   title: Stitch API Petstore
+#   version: 1.0.18
+```
+
+Import this spec into Apicurito to explore further:
+
+* Open Apicurito: https://apicurito.172.30.0.2.nip.io/
+* Click `Open API` and select the `openapi.yaml` spec from `~/api-poc-petstore`
 
 TODO
 
