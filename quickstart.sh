@@ -118,8 +118,6 @@ if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
     configureManagedAddon ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
     configureClusterAsIngress ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
     deployPrometheusForFederation ${KIND_CLUSTER_WORKLOAD}-${i} ${PROMETHEUS_FOR_FEDERATION_DIR}?ref=${MGC_BRANCH}
-    deployGatekeeper ${KIND_CLUSTER_WORKLOAD}-${i}
-    configureGatekeeper ${KIND_CLUSTER_WORKLOAD}-${i}
   done
 fi
 
