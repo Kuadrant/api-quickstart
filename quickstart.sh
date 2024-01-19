@@ -82,6 +82,9 @@ deployOCMHub ${KIND_CLUSTER_CONTROL_PLANE} "minimal"
 # Deploy Quick start kustomize
 deployQuickStartControl ${KIND_CLUSTER_CONTROL_PLANE}
 
+# Configure MetalLb
+configureMetalLB ${KIND_CLUSTER_CONTROL_PLANE} ${metalLBSubnetStart}
+
 # Deploy ingress controller
 deployIngressController ${KIND_CLUSTER_CONTROL_PLANE}
 
@@ -113,6 +116,7 @@ setupDemoResources ${KIND_CLUSTER_CONTROL_PLANE}
 if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
   for ((i = 1; i <= ${API_WORKLOAD_CLUSTERS_COUNT}; i++)); do
     deployQuickStartWorkload ${KIND_CLUSTER_WORKLOAD}-${i}
+    configureMetalLB ${KIND_CLUSTER_WORKLOAD}-${i} ${metalLBSubnetStart}
     deployOLM ${KIND_CLUSTER_WORKLOAD}-${i}
     deployOCMSpoke ${KIND_CLUSTER_WORKLOAD}-${i}
     configureManagedAddon ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}

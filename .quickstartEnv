@@ -20,7 +20,7 @@ dockerBinCmd() {
 export KIND_CLUSTER_PREFIX="api-"
 export KIND_CLUSTER_CONTROL_PLANE="${KIND_CLUSTER_PREFIX}control-plane"
 export KIND_CLUSTER_WORKLOAD="${KIND_CLUSTER_PREFIX}workload"
-export KIND_CLUSTER_DOCKER_NETWORK="api"
+export KIND_CLUSTER_DOCKER_NETWORK="mgc"
 
 # SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # BIN_DIR="${SCRIPT_DIR}/../bin/"

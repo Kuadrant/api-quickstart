@@ -43,7 +43,7 @@ metadata:
   namespace: metallb-system
 spec:
   addresses:
-  - 172.30.${metalLBSubnet}.0/24
+  - 172.31.${metalLBSubnet}.0/24
 ---
 apiVersion: metallb.io/v1beta1
 kind: L2Advertisement
@@ -162,10 +162,10 @@ spec:
         cpu: "1000m"
         memory: "1500Mi"
   name: apicurio-studio
-  url: apicurio.172.30.0.2.nip.io
+  url: apicurio.172.31.0.2.nip.io
   keycloak:
     install: true
-    url: keycloak.apicurio.172.30.0.2.nip.io
+    url: keycloak.apicurio.172.31.0.2.nip.io
     realm: apicurio
     volumeSize: 1Gi
   database:
