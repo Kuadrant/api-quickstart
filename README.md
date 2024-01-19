@@ -28,6 +28,7 @@ Run the following command, choosing `aws` as the dns provider:
 `./quickstart.sh`
 ```
 
+
 ### Create a gateway
 
 <!-- TODO: Create Gateway & TLSPolicy as part of quickstart, if possible -->
@@ -64,7 +65,7 @@ kubectl --context kind-mgc-control-plane get mutations -A  -o yaml
 
 #### Grafana dashboard view
 To get a top level view of the constraints in violation, the platform engineer dashboard can be used. This can be accessed by:
-* Following the grafana link that would have been printed towards the end of the quickstart script you ran earlier.
+* Following the grafana link `https://grafana.172.31.0.2.nip.io`
 
 Grafana will be set up with a **username** `admin` and **password** `admin` use these to login to see the dashboards.
 
@@ -156,6 +157,8 @@ EOF
 
 Since we have created all the policies that Gatekeeper had the guardrails around, you should no longer see any constraints in violation. To check this from a high level go back to the dashboards from the previous step and ensure the violations are no longer present.
 
+`https://grafana.172.31.0.2.nip.io`
+
 As we have created these policies the dashboard will be populated with more useful data including information about:
 * Gateways & Policies
 * TLSPolicy, DNSPolicy, AuthPolicy and RateLimitPolicy
@@ -241,20 +244,25 @@ Show rate limiting working on both clusters/apps.
 
 ### App Developer Overview: Show API traffic & impact of AuthPolicy & Rate Limit Policy
 
-Open the App Developer Dashboard
+To view the App developer dashboards the same Grafana will be used from the platform engineer above:
+`https://grafana.172.31.0.2.nip.io`
 
-<!-- TODO: Instructions how to get to the dashboard -->
+The most relevant for a app developer is `Stitch: App Developer Dashboard` 
+You should see panels about API's including:
 
-* List of APIs, corresponding to our HTTPRoute coming from our OAS spec
+* Request and error rates
+* API summaries
+* API request summaries
+* API duration
+
+All corresponding to our HTTPRoute coming from our OAS spec
 
 ## Platform Engineer Steps (Part 2)
 
 ### Platform Overview
 
-Open Platform Engineer Dashboard in Grafana to see:
+Now that the app developer has deployed their app, new metrics and data is now available in the platform engineer dashboard seen in the previous step `https://grafana.172.31.0.2.nip.io`. Including:
 
-<!-- TODO: Instructions how to get to the dashboard -->
-
-* Gateways & Policies - new resources created by App Developer shown
-* Constraints & Violations - no violations
-* APIs Summary - API created by App Developer shown, including summary traffic
+* Gateways & Policies 
+* Constraints & Violations (Should be no violations present)
+* APIs Summary 
