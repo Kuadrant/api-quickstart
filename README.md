@@ -28,7 +28,6 @@ Run the following command, choosing `aws` as the dns provider:
 `./quickstart.sh`
 ```
 
-
 ### Create a gateway
 
 <!-- TODO: Create Gateway & TLSPolicy as part of quickstart, if possible -->
@@ -242,9 +241,9 @@ TODO
 
 Show rate limiting working on both clusters/apps.
 
-### App Developer Overview: Show API traffic & impact of AuthPolicy & Rate Limit Policy
+### App Developer Overview: API traffic & impact of AuthPolicy & Rate Limit Policy
 
-To view the App developer dashboards the same Grafana will be used from the platform engineer above:
+To view the App developer dashboards the same Grafana will be used from the platform engineer steps above:
 `https://grafana.172.31.0.2.nip.io`
 
 The most relevant for a app developer is `Stitch: App Developer Dashboard` 
@@ -263,6 +262,6 @@ All corresponding to our HTTPRoute coming from our OAS spec
 
 Now that the app developer has deployed their app, new metrics and data is now available in the platform engineer dashboard seen in the previous step `https://grafana.172.31.0.2.nip.io`. Including:
 
-* Gateways & Policies 
+* Gateways & both route and gateway policies 
 * Constraints & Violations (Should be no violations present)
 * APIs Summary 
