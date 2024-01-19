@@ -15,7 +15,7 @@ spec:
       namespaces:
         from: All
     name: api
-    hostname: "petstore.$KUADRANT_ZONE_ROOT_DOMAIN"
+    hostname: "*.$KUADRANT_ZONE_ROOT_DOMAIN"
     port: 443
     protocol: HTTPS
     tls:
