@@ -22,7 +22,7 @@ cleanClusters() {
 cleanNetwork() {
   # Delete the network
   echo "Deleting api network"
-  docker network rm api || true
+  docker network rm ${KIND_CLUSTER_DOCKER_NETWORK} || true
 }
 
 cleanupKind() {

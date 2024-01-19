@@ -23,7 +23,7 @@ kindCreateCluster() {
   local pod_cidr="10.24${idx}.0.0/16"
   local service_cidr="100.9${idx}.0.0/16"
   local dns_domain="${cluster}.local"
-  export KIND_EXPERIMENTAL_DOCKER_NETWORK=api
+  export KIND_EXPERIMENTAL_DOCKER_NETWORK=$KIND_CLUSTER_DOCKER_NETWORK
   cat <<EOF | ${KIND_BIN} create cluster --name ${cluster} --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
@@ -71,8 +71,9 @@ setupClusters() {
     local port443=$4
     local dataPlaneClusterCount=$5
 
+
     # Create network for the clusters
-    docker network create -d bridge --subnet 172.30.0.0/16 ${KIND_CLUSTER_DOCKER_NETWORK} --gateway 172.30.0.1 \
+    docker network create -d bridge --subnet 172.31.0.0/16 ${KIND_CLUSTER_DOCKER_NETWORK} --gateway 172.31.0.1 \
       -o "com.docker.network.bridge.enable_ip_masquerade"="true" \
       -o "com.docker.network.driver.mtu"="1500"
 

@@ -5,6 +5,11 @@
 
 This document will detail the setup of a reference architecture to support a number of API management use-cases connecting Kuadrant with other projects in the wider API management on Kubernetes ecosystem.
 
+## Pre-requisities:
+
+- `kubectl`: https://kubernetes.io/docs/reference/kubectl/
+- `kustomize`: https://kustomize.io/
+
 ## Platform Engineer Steps (Part 1)
 
 
@@ -36,9 +41,9 @@ Run the following command, choosing `aws` as the dns provider:
 View the ManagedZone, Gateway and TLSPolicy:
 
 ```bash
-kubectl --context kind-mgc-control-plane describe managedzone mgc-dev-mz -n multi-cluster-gateways
-kubectl --context kind-mgc-control-plane describe gateway -n multi-cluster-gateways
-kubectl --context kind-mgc-control-plane describe tlspolicy -n multi-cluster-gateways
+kubectl --context kind-api-control-plane describe managedzone mgc-dev-mz -n multi-cluster-gateways
+kubectl --context kind-api-control-plane describe gateway -n multi-cluster-gateways
+kubectl --context kind-api-control-plane describe tlspolicy -n multi-cluster-gateways
 ```
 
 ### Guard Rails: Constraint warnings about missing policies ( DNS, AuthPolicy, RLP)
@@ -55,11 +60,10 @@ Running the quick start script above will bring up [Gatekeeper](https://open-pol
 
 To get the above constraints and constraint templates run:
 ```bash
-kubectl --context kind-mgc-control-plane get constraint -A  -o yaml
-kubectl --context kind-mgc-control-plane get constrainttemplates -A  -o yaml
-kubectl --context kind-mgc-control-plane get mutations -A  -o yaml
-
+kubectl --context kind-api-control-plane get constraint -A  -o yaml
+kubectl --context kind-api-control-plane get constrainttemplates -A  -o yaml
 ```
+
 **Note:** :exclamation: Since a gateway has been created the constraints will be active and will be in violation until the polices are created. 
 
 #### Grafana dashboard view
@@ -119,6 +123,9 @@ spec:
         unit: second
 EOF
 ```
+
+<!-- TODO: error. error: resource mapping not found for name: "prod-web" namespace: "multi-cluster-gateways" from "STDIN": no matches for kind "RateLimitPolicy" in version "kuadrant.io/v1beta2" -->
+
 #### Authpolicy
 Create a Gateway-wide AuthPolicy
 
@@ -128,7 +135,7 @@ apiVersion: kuadrant.io/v1beta2
 kind: AuthPolicy
 metadata:
   name: gw-auth
-  namespace: kuadrant-multi-cluster-gateways
+  namespace: multi-cluster-gateways
 spec:
   targetRef:
     group: gateway.networking.k8s.io
@@ -152,6 +159,10 @@ spec:
             }
 EOF
 ```
+
+<!-- TODO: missing crds? error: resource mapping not found for name: "gw-auth" namespace: "multi-cluster-gateways" from "STDIN": no matches for kind "AuthPolicy" in version "kuadrant.io/v1beta2"
+ensure CRDs are installed first-->
+
 ### Platform Overview
 
 Since we have created all the policies that Gatekeeper had the guardrails around, you should no longer see any constraints in violation. To check this from a high level go back to the dashboards from the previous step and ensure the violations are no longer present.
@@ -179,7 +190,7 @@ Then deploy it to the first workload cluster:
 
 ```bash
 cd ~/api-poc-petstore
-kubectl --context kind-api-workload-1 apply -k ./resources/
+kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
 ```
 
 Configure the app `REGION` to be `eu`:
@@ -187,6 +198,8 @@ Configure the app `REGION` to be `eu`:
 ```bash
 kubectl --context kind-api-workload-1 apply -k ./resources/local-cluster/
 ```
+
+<!-- TODO: fix tlspolicy: mgc-policy-controller-6d8dbf6989-54p6k policy-controller 2024-01-19T07:57:27Z	DEBUG	tlspolicy	ComputeGatewayDiffs	{"TLSPolicy": {"name":"prod-web","namespace":"multi-cluster-gateways"}, "#missing-policy-ref": 0, "#valid-policy-ref": 1, "#invalid-policy-ref": 0} -->
 
 ### Exploring the Open API Specification
 
@@ -204,7 +217,7 @@ cat openapi.yaml
 
 Import this spec into Apicurito to explore further:
 
-* Open Apicurito: https://apicurito.172.30.0.2.nip.io/
+* Open Apicurito: https://apicurito.172.31.0.2.nip.io/
 * Click `Open API` and select the `openapi.yaml` spec from `~/api-poc-petstore`
 
 TODO
