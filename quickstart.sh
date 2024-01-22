@@ -112,7 +112,6 @@ configureGatekeeper ${KIND_CLUSTER_CONTROL_PLANE}
 
 setupDemoResources ${KIND_CLUSTER_CONTROL_PLANE}
 
-
 if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
   for ((i = 1; i <= ${API_WORKLOAD_CLUSTERS_COUNT}; i++)); do
     deployQuickStartWorkload ${KIND_CLUSTER_WORKLOAD}-${i}
@@ -122,6 +121,7 @@ if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
     configureManagedAddon ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
     configureClusterAsIngress ${KIND_CLUSTER_CONTROL_PLANE} ${KIND_CLUSTER_WORKLOAD}-${i}
     deployPrometheusForFederation ${KIND_CLUSTER_WORKLOAD}-${i} ${PROMETHEUS_FOR_FEDERATION_DIR}?ref=${MGC_BRANCH}
+    restartKSM ${KIND_CLUSTER_WORKLOAD}-${i}
   done
 fi
 
@@ -129,6 +129,7 @@ fi
 
 kubectl config use-context kind-${KIND_CLUSTER_CONTROL_PLANE}
 
+restartKSM ${KIND_CLUSTER_CONTROL_PLANE}
 
 echo ""
 echo "What's next...

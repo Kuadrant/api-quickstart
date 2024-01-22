@@ -402,6 +402,15 @@ deployPrometheusForFederation() {
   fi
 }
 
+restartKSM() {
+  clusterName=${1}
+  kubectl config use-context kind-${clusterName}
+
+  # Restarts the metrics to make sure all resources exists before ksm starts.
+  # https://github.com/kubernetes/kube-state-metrics/issues/2142
+  kubectl delete pods -n monitoring -l app.kubernetes.io/name=kube-state-metrics
+}
+
 installAPIDashboards() {
   local PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_KUSTOMIZATION_DIR="$2"
   local PROMETHEUS_FOR_FEDERATION_API_DASHBOARDS_GRAFANA_PATCH="$3"
