@@ -35,9 +35,6 @@ Run the following command, choosing `aws` as the dns provider:
 
 ### Create a gateway
 
-<!-- TODO: Create Gateway & TLSPolicy as part of quickstart, if possible -->
-
-
 View the ManagedZone, Gateway and TLSPolicy:
 
 ```bash
@@ -46,27 +43,23 @@ kubectl --context kind-api-control-plane describe gateway -n multi-cluster-gatew
 kubectl --context kind-api-control-plane describe tlspolicy -n multi-cluster-gateways
 ```
 
-### Guard Rails: Constraint warnings about missing policies ( DNS, AuthPolicy, RLP)
+### Guard Rails: Constraint warnings about missing policies ( DNS, TLS)
+
 Running the quick start script above will bring up [Gatekeeper](https://open-policy-agent.github.io/gatekeeper/website/docs) and the following configurations: 
 
-* Constraint Template
-    * RequirePolicyTargetingGateway
 * Constraints
     * require-dnspolicy-targeting-gateway (Warn)
-    * require-authpolicy-targeting-gateway (Warn)
-    * require-ratelimitpolicy-targeting-gateway (Warn)
-* Mutation
-    * authpolicy-mutation
+    * require-tlspolicy-targeting-gateway (Warn)
 
-To get the above constraints and constraint templates run:
+To get the above constraints:
 ```bash
-kubectl --context kind-api-control-plane get constraint -A  -o yaml
-kubectl --context kind-api-control-plane get constrainttemplates -A  -o yaml
+kubectl --context kind-api-control-plane get constraints
 ```
 
-**Note:** :exclamation: Since a gateway has been created the constraints will be active and will be in violation until the polices are created. 
+**Note:** :exclamation: Since a gateway has been created automatically, along with a TLSPolicy, the violation for a missing DNSPolicy will be active until one is created.
 
 #### Grafana dashboard view
+
 To get a top level view of the constraints in violation, the platform engineer dashboard can be used. This can be accessed by:
 * Following the grafana link `https://grafana.172.31.0.2.nip.io`
 
@@ -77,6 +70,7 @@ The few most relevant for a platform engineer is called `Stitch: Platform Engine
 ### Create missing Policies
 
 #### DNSPolicy
+
 Create a DNSPolicy:
 
 ```bash
@@ -96,82 +90,16 @@ spec:
       defaultGeo: EU
 EOF
 ```
+
 ####  Route 53 DNS Zone
 
 When the DNS Policy has been created, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Please navigate to Route53 and ensure they are present. The record will have `petstore` in its name
-
-#### RateLimitPolicy 
-Create a Gateway-wide RateLimitPolicy
-
-```bash
-kubectl --context kind-api-control-plane apply -f - <<EOF
-apiVersion: kuadrant.io/v1beta2
-kind: RateLimitPolicy
-metadata:
-  name: prod-web
-  namespace: multi-cluster-gateways
-spec:
-  targetRef:
-    name: prod-web
-    group: gateway.networking.k8s.io
-    kind: Gateway
-  limits:
-    "global":
-      rates:
-      - limit: 10
-        duration: 10
-        unit: second
-EOF
-```
-
-<!-- TODO: error. error: resource mapping not found for name: "prod-web" namespace: "multi-cluster-gateways" from "STDIN": no matches for kind "RateLimitPolicy" in version "kuadrant.io/v1beta2" -->
-
-#### Authpolicy
-Create a Gateway-wide AuthPolicy
-
-```bash
-kubectl --context kind-api-control-plane apply -f - <<EOF
-apiVersion: kuadrant.io/v1beta2
-kind: AuthPolicy
-metadata:
-  name: gw-auth
-  namespace: multi-cluster-gateways
-spec:
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: Gateway
-    name: prod-web
-  rules:
-    authorization:
-      deny-all:
-        opa:
-          rego: "allow = false"
-    response:
-      unauthorized:
-        headers:
-          "content-type":
-            value: application/json
-        body:
-          value: |
-            {
-              "error": "Forbidden",
-              "message": "Access denied by default by the gateway operator. If you are the administrator of the service, create a specific auth policy for the route."
-            }
-EOF
-```
-
-<!-- TODO: missing crds? error: resource mapping not found for name: "gw-auth" namespace: "multi-cluster-gateways" from "STDIN": no matches for kind "AuthPolicy" in version "kuadrant.io/v1beta2"
-ensure CRDs are installed first-->
 
 ### Platform Overview
 
 Since we have created all the policies that Gatekeeper had the guardrails around, you should no longer see any constraints in violation. To check this from a high level go back to the dashboards from the previous step and ensure the violations are no longer present.
 
 `https://grafana.172.31.0.2.nip.io`
-
-As we have created these policies the dashboard will be populated with more useful data including information about:
-* Gateways & Policies
-* TLSPolicy, DNSPolicy, AuthPolicy and RateLimitPolicy
 
 In the next step as a App developer you will get additional info like API summaries and route policies.
 
@@ -234,13 +162,11 @@ TODO
 
 ### Multicluster Bonanza
 
-TODO
-
 Deploy the petstore to 2nd cluster:
 
 ```bash
 cd ~/api-poc-petstore
-kubectl --context kind-api-workload-2 apply -k ./resources/
+kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-2 apply -f-
 ```
 
 Configure the app `REGION` to be `us`:
@@ -249,22 +175,18 @@ Configure the app `REGION` to be `us`:
 kubectl --context kind-api-workload-2 apply -k ./resources/spoke-cluster/
 ```
 
-e.g.
-
-```bash
-kubectl --context kind-mgc-control-plane patch placement petstore -n argocd --type='json' -p='[{"op": "add", "path": "/spec/clusterSets/-", "value": "petstore-region-us"}, {"op": "replace", "path": "/spec/numberOfClusters", "value": 2}]'
-```
+<!-- TODO: Deploy Gateway to 2nd cluster -->
 
 Describe the DNSPolicy
 
 ```bash
-kubectl --context kind-mgc-control-plane describe dnspolicy prod-web -n multi-cluster-gateways
+kubectl --context kind-api-control-plane describe dnspolicy prod-web -n multi-cluster-gateways
 ```
 
 Show ManagedCluster labelling
 
 ```bash
-kubectl --context kind-mgc-control-plane get managedcluster -A -o custom-columns="NAME:metadata.name,URL:spec.managedClusterClientConfigs[0].url,REGION:metadata.labels.kuadrant\.io/lb-attribute-geo-code"
+kubectl --context kind-api-control-plane get managedcluster -A -o custom-columns="NAME:metadata.name,URL:spec.managedClusterClientConfigs[0].url,REGION:metadata.labels.kuadrant\.io/lb-attribute-geo-code"
 ```
 
 Show DNS resolution per geo region

@@ -10,11 +10,8 @@ spec:
         version: "v1alpha1"
         kind: "DNSPolicy"
       - group: "kuadrant.io"
-        version: "v1beta2"
-        kind: "AuthPolicy"
-      - group: "kuadrant.io"
-        version: "v1beta2"
-        kind: "RateLimitPolicy"
+        version: "v1alpha1"
+        kind: "TLSPolicy"
 ---
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: RequirePolicyTargetingGateway
@@ -33,7 +30,7 @@ spec:
 apiVersion: constraints.gatekeeper.sh/v1beta1
 kind: RequirePolicyTargetingGateway
 metadata:
-  name: require-authpolicy-targeting-gateway
+  name: require-tlspolicy-targeting-gateway
 spec:
   enforcementAction: warn
   match:
@@ -41,20 +38,5 @@ spec:
       - apiGroups: ["gateway.networking.k8s.io"]
         kinds: ["Gateway"]
   parameters:
-    kind: AuthPolicy
-    groupVersion: "kuadrant.io/v1beta2"
----
-apiVersion: constraints.gatekeeper.sh/v1beta1
-kind: RequirePolicyTargetingGateway
-metadata:
-  name: require-ratelimitpolicy-targeting-gateway
-spec:
-  enforcementAction: warn
-  match:
-    kinds:
-      - apiGroups: ["gateway.networking.k8s.io"]
-        kinds: ["Gateway"]
-  parameters:
-    kind: RateLimitPolicy
-    groupVersion: "kuadrant.io/v1beta2"
-
+    kind: TLSPolicy
+    groupVersion: "kuadrant.io/v1alpha1"
