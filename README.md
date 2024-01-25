@@ -1,23 +1,31 @@
 # API Quickstart
 
-
 ## Introduction
 
-This document will detail the setup of a reference architecture to support a number of API management use-cases connecting Kuadrant with other projects in the wider API management on Kubernetes ecosystem.
+This document details how to setup a local reference architecture, and design and deploy an API. This will show the following API management features in a kube native environment using Kuadrant and other open source tools:
 
-## Pre-requisities:
+- API design
+- API security and access control
+- API monitoring
+- Traffic management and scalability
+
+The sections in this document are grouped by the persona that is typically associated with the steps in that section. The 3 personas are:
+
+- The *platform engineer*, who provides and maintains a platform for application developers,
+- the *application developer*, who designs, builds and maintains applications and APIs,
+- and the *api consumer*, who makes API calls to the API
+
+## Pre-requisities
 
 - `kubectl`: https://kubernetes.io/docs/reference/kubectl/
 - `kustomize`: https://kustomize.io/
+- An [AWS account](https://aws.amazon.com/) with a Secret Access Key and Access Key ID. You will also need to a [Route 53](https://docs.aws.amazon.com/route53/) zone.
 
-## Platform Engineer Steps (Part 1)
-
-
-<!-- TODO: Copy formatting & env var info from the MGC Getting Started guide -->
+## (Platform engineer) Platform Setup
 
 Export the following env vars:
 
-```
+```bash
 export KUADRANT_AWS_ACCESS_KEY_ID=<key_id>
 export KUADRANT_AWS_SECRET_ACCESS_KEY=<secret>
 export KUADRANT_AWS_REGION=<region>
@@ -25,53 +33,48 @@ export KUADRANT_AWS_DNS_PUBLIC_ZONE_ID=<zone>
 export KUADRANT_ZONE_ROOT_DOMAIN=<domain>
 ```
 
-Run the following command, choosing `aws` as the dns provider:
-
-<!-- TODO: Change to a curl command that fetches everything remotely -->
+Clone the api-quickstart repo and run the quickstart script:
 
 ```bash
-`./quickstart.sh`
+git clone git@github.com:Kuadrant/api-quickstart.git
+cd api-quickstart
+./quickstart.sh
 ```
 
-### Create a gateway
+This will take several minutes as 3 local kind clusters are started and configured in a hub and spoke architecture.
 
-View the ManagedZone, Gateway and TLSPolicy:
+### Verify the Gateway and configuration
+
+View the ManagedZone, Gateway and TLSPolicy. The ManagedZone and TLSPolicy should have a Ready status of true. The Gateway should have a Programmed status of True.
 
 ```bash
-kubectl --context kind-api-control-plane describe managedzone mgc-dev-mz -n multi-cluster-gateways
-kubectl --context kind-api-control-plane describe gateway -n multi-cluster-gateways
-kubectl --context kind-api-control-plane describe tlspolicy -n multi-cluster-gateways
+kubectl --context kind-api-control-plane get managedzone,tlspolicy,gateway -n multi-cluster-gateways
 ```
 
 ### Guard Rails: Constraint warnings about missing policies ( DNS, TLS)
 
-Running the quick start script above will bring up [Gatekeeper](https://open-policy-agent.github.io/gatekeeper/website/docs) and the following configurations: 
+Running the quick start script above will bring up [Gatekeeper](https://open-policy-agent.github.io/gatekeeper/website/docs) and the following constraints: 
 
-* Constraints
-    * require-dnspolicy-targeting-gateway (Warn)
-    * require-tlspolicy-targeting-gateway (Warn)
+* Gateways must have a TLSPolicy targeting them
+* Gateways must have a DNSPolicy targeting them
 
-To get the above constraints:
+To view the above constraints in kubernetes, run this command:
 ```bash
 kubectl --context kind-api-control-plane get constraints
 ```
 
 **Note:** :exclamation: Since a gateway has been created automatically, along with a TLSPolicy, the violation for a missing DNSPolicy will be active until one is created.
 
-#### Grafana dashboard view
+### Grafana dashboard view
 
-To get a top level view of the constraints in violation, the platform engineer dashboard can be used. This can be accessed by:
-* Following the grafana link `https://grafana.172.31.0.2.nip.io`
+To get a top level view of the constraints in violation, the `Stitch: Platform Engineer Dashboard` can be used. This can be accessed by at [https://grafana.172.31.0.2.nip.io](https://grafana.172.31.0.2.nip.io)
 
-Grafana will be set up with a **username** `admin` and **password** `admin` use these to login to see the dashboards.
+Grafana has a default username and password of `admin`.
+You can find the `Stitch: Platform Engineer Dashboard` dashboard in the `Default` folder.
 
-The few most relevant for a platform engineer is called `Stitch: Platform Engineer Dashboard` or `Stitch: Gatekeeper`
+### Create the missing DNSPolicy
 
-### Create missing Policies
-
-#### DNSPolicy
-
-Create a DNSPolicy:
+Create a DNSPolicy that targets the Gateway with the following command:
 
 ```bash
 kubectl --context kind-api-control-plane apply -f - <<EOF
@@ -91,21 +94,17 @@ spec:
 EOF
 ```
 
-####  Route 53 DNS Zone
+#### Route 53 DNS Zone
 
-When the DNS Policy has been created, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Please navigate to Route53 and ensure they are present. The record will have `petstore` in its name
+When the DNS Policy has been created, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Navigate to Route53 and you should see some new records in the zone. The record will have `petstore` in its name.
 
 ### Platform Overview
 
-Since we have created all the policies that Gatekeeper had the guardrails around, you should no longer see any constraints in violation. To check this from a high level go back to the dashboards from the previous step and ensure the violations are no longer present.
+Since we have created all the policies that Gatekeeper had the guardrails around, you should no longer see any constraints in violation. This can be seen back in the `Stitch: Platform Engineer Dashboard` in Grafana at [https://grafana.172.31.0.2.nip.io](https://grafana.172.31.0.2.nip.io)
 
-`https://grafana.172.31.0.2.nip.io`
+## (Application developer) App setup
 
-In the next step as a App developer you will get additional info like API summaries and route policies.
-
-## App Developer Steps
-
-### API Setup
+### API Design
 
 <!-- TODO: Make this repo public somewhere -->
 
@@ -129,23 +128,11 @@ Configure the app `REGION` to be `eu`:
 kubectl --context kind-api-workload-1 apply -k ./resources/eu-cluster/
 ```
 
-<!-- TODO: fix tlspolicy: mgc-policy-controller-6d8dbf6989-54p6k policy-controller 2024-01-19T07:57:27Z	DEBUG	tlspolicy	ComputeGatewayDiffs	{"TLSPolicy": {"name":"prod-web","namespace":"multi-cluster-gateways"}, "#missing-policy-ref": 0, "#valid-policy-ref": 1, "#invalid-policy-ref": 0} -->
-
-
-Our Petstore app is running on one of our workload clusters. To access its Swagger UI, run:
-
-```bash
-echo https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/docs/
-```
-
-Then navigate to the displayed URL, which will direct you to a Swagger UI hosted from the same app that provides some of the APIs we'll be looking at.
-
 ### Exploring the Open API Specification
 
-In the Petstore app, take a look at the Open API spec:
+The raw Open API spec can be found in the root of the repo:
 
 ```bash
-cd ~/api-poc-petstore
 cat openapi.yaml
 # ---
 # openapi: 3.0.2
@@ -154,13 +141,15 @@ cat openapi.yaml
 #   version: 1.0.18
 ```
 
-Patch the `openapi.yaml` spec file to point at our working, deployed service:
+Patch the `openapi.yaml` spec file to point at our working, deployed service. This will be used later when trying out the API.
 
 ```bash
 sed -i$(uname | grep -q Darwin && echo " ''") "s|- url: /api/v3|- url: https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/api/v3/|" openapi.yaml
 ```
 
-## Exploring Kuadrant Extensions
+<!--TODO also result in a file called openapi.yaml'' on mac -->
+
+## (Application developer) API security
 
 We've included a number of sample `x-kuadrant` extensions in the OAS spec already:
 
@@ -182,7 +171,7 @@ We've included a number of sample `x-kuadrant` extensions in the OAS spec alread
         kind: Gateway
 ```
 
-- In `/user/login`, we have a `rate_limit` set and a Gateway API `backendRef`set. The rate limit policy for this endpoint restricts usage of this endpoint to 2 requests in a 10 second window:
+- In `/user/login`, we have a Gateway API `backendRef` set and a `rate_limit` set. The rate limit policy for this endpoint restricts usage of this endpoint to 2 requests in a 10 second window:
     ```yaml
     x-kuadrant:
       backendRefs:
@@ -195,7 +184,7 @@ We've included a number of sample `x-kuadrant` extensions in the OAS spec alread
         duration: 10
         unit: second
     ```
-- In ` /store/inventory`, we have also have a `rate_limit` and a Gateway API `backendRef`set. The rate limit policy for the endpoint restricts usage of this endpoint to 10 requests in a 10 second window:
+- In `/store/inventory`, we have also have a Gateway API `backendRef`set and a `rate_limit` set. The rate limit policy for the endpoint restricts usage of this endpoint to 10 requests in a 10 second window:
     ```yaml
     x-kuadrant:
       backendRefs:
@@ -208,7 +197,7 @@ We've included a number of sample `x-kuadrant` extensions in the OAS spec alread
           duration: 10
           unit: second
     ```
-- We also have a `securityScheme` setup for apiKey auth, powered by Authorino. We'll show this in more detail a little later:
+- Finally, we have a `securityScheme` setup for apiKey auth, powered by Authorino. We'll show this in more detail a little later:
   ```yaml
   securitySchemes:
     api_key:
@@ -217,57 +206,56 @@ We've included a number of sample `x-kuadrant` extensions in the OAS spec alread
       in: header
   ```
 
-These extensions allow us to automatically generate Kuadrant Kubernetes resources, including AuthPolicies, RateLimitPolicies and Gateway API resources such as HTTPRoutes.
-
-<!-- TODO: links to policy API docs -->
+These extensions allow us to automatically generate Kuadrant Kubernetes resources, including [AuthPolicies](https://docs.kuadrant.io/kuadrant-operator/doc/auth/), [RateLimitPolicies](https://docs.kuadrant.io/kuadrant-operator/doc/rate-limiting/) and [Gateway API resources](https://gateway-api.sigs.k8s.io/reference/spec/) such as HTTPRoutes.
 
 ### kuadrantctl
 
-`kuadrantctl` supports the generation of various Kubernetes resources via OAS specs. Let's run some commands to generate some of these resources, check these into your forked repo, and apply these to our running workload to implement Rate Limiting and Auth Policies.
-
+`kuadrantctl` is a cli that supports the generation of various Kubernetes resources via OAS specs. Let's run some commands to generate some of these resources, check these into your forked repo, and apply these to our running workload to implement rate limiting and auth.
 
 ### Installing `kuadrantctl`
-Download `kuadrantctl` from the `v0.2.0` release artifacts: 
+Download `kuadrantctl` from the `v0.2.0` release artifacts:
 
 https://github.com/Kuadrant/kuadrantctl/releases/tag/v0.2.0
 
-And drop the `kuadrantctl` binary somewhere into your $PATH (e.g. `/usr/local/bin/`).
+Drop the `kuadrantctl` binary somewhere into your $PATH (e.g. `/usr/local/bin/`).
 
 For this next part of the tutorial, we recommend installing [`yq`](https://github.com/mikefarah/yq) to pretty-print YAML resources.
 
 ### Generating Kuadrant resources with `kuadrantctl`
 
-In your fork of the petstore app
-
-Firstly, we'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
+In your fork of the petstore app, we'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
 
 ```bash
-# Show generated AuthPolicy
+# Show the generated AuthPolicy
 kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P
 
 # Generate this resource and save:
-kuadrantctl generate gatewayapi authpolicy --oas openapi.yaml | yq -P > resources/authpolicy.yaml
+kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P > resources/authpolicy.yaml
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/authpolicy.yaml
 
 # Push this change back to your fork
-git commit -am "Generated AuthPolicy" && git push
+git add resources/authpolicy.yaml
+git commit -am "Generated AuthPolicy"
+git push # You may need to set an upstream as well
 ```
 
 Next we'll generate a `RateLimitPolicy`, to protect our APIs with the limits we have setup in our OAS spec:
+
 ```bash
 # Show generated RateLimitPolicy
 kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P
 
 # Generate this resource and save:
-kuadrantctl generate gatewayapi ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
+kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
 
 # Push this change back to your fork
-git commit -am "Generated RateLimitPolicy" && git push
+git add resources/ratelimitpolicy.yaml
+git commit -am "Generated RateLimitPolicy"
 ```
 
 Lastly, we'll generate a Gateway API `HTTPRoute` to service our APIs:
@@ -279,13 +267,15 @@ kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P
 # Generate this resource and save:
 kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P > resources/httproute.yaml
 
-# Apply this resource to our cluster:
-kubectl --context kind-api-workload-1 apply -f ./resources/httproute.yaml
+# Apply this resource to our cluster, setting the hostname in via the KUADRANT_ZONE_ROOT_DOMAIN env var:
+cat ./resources/httproute.yaml | envsubst | kubectl --context kind-api-workload-1 apply -f -
 
 # Push this change back to your fork
-git commit -am "Generated HTTPRoute" && git push
+git add resources/httproute.yaml
+git commit -am "Generated HTTPRoute"
 ```
-## Check our applied policies
+
+### Check our applied policies
 
 Navigate to your app's Swagger UI:
 
@@ -317,7 +307,6 @@ You'll see a response similar to:
 ```
 
 This API has a rate limit applied, so if you send more than 10 requests in a 10 second window, you will see a `429` HTTP Status code from responses, and a "Too Many Requests" message in the response body. Click `Execute` quickly in succession to see your `RateLimitPolicy` in action.
-
 
 ### Policy Adjustments
 
@@ -371,8 +360,22 @@ Navigate to the `/store/inventory` API one more, click `Try it out`, and `Execut
 
 You'll see the effects of our new `RateLimitPolicy` applied. If you now send more than 2 requests in a 10 second window, you'll be rate-limited.
 
+## (Application developer) Scaling the application
 
-### Multicluster Bonanza
+Deploy the petstore to the 2nd cluster:
+
+```bash
+cd ~/api-poc-petstore
+kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-2 apply -f-
+```
+
+Configure the app `REGION` to be `us`:
+
+```bash
+kubectl --context kind-api-workload-2 apply -k ./resources/us-cluster/
+```
+
+## (Platform engineer) Scaling the gateway and traffic management
 
 Deploy the Gateway to the 2nd cluster:
 
@@ -389,22 +392,7 @@ kubectl --context kind-api-control-plane label managedcluster kind-api-workload-
 kubectl --context kind-api-control-plane label managedcluster kind-api-workload-2 kuadrant.io/lb-attribute-geo-code=US --overwrite
 ```
 
-Deploy the petstore to the 2nd cluster:
-
-```bash
-cd ~/api-poc-petstore
-kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-2 apply -f-
-```
-
-Configure the app `REGION` to be `us`:
-
-```bash
-kubectl --context kind-api-workload-2 apply -k ./resources/us-cluster/
-```
-
-```bash
-kubectl --context kind-api-control-plane describe dnspolicy prod-web -n multi-cluster-gateways
-```
+## (API consumer) Accessing the API
 
 Show DNS resolution per geo region
 
@@ -412,12 +400,14 @@ TODO
 
 Show rate limiting working on both clusters/apps.
 
-### App Developer Overview: API traffic & impact of AuthPolicy & Rate Limit Policy
+TODO
 
-To view the App developer dashboards the same Grafana will be used from the platform engineer steps above:
+## (App developer) API traffic monitoring
+
+To view the App developer dashboard, the same Grafana will be used from the platform engineer steps above:
 `https://grafana.172.31.0.2.nip.io`
 
-The most relevant for a app developer is `Stitch: App Developer Dashboard` 
+The most relevant for a app developer is `Stitch: App Developer Dashboard`
 You should see panels about API's including:
 
 * Request and error rates
@@ -427,12 +417,14 @@ You should see panels about API's including:
 
 All corresponding to our HTTPRoute coming from our OAS spec
 
-## Platform Engineer Steps (Part 2)
+## (Platform Engineer) APIs summary view
 
-### Platform Overview
+Now that the app developer has deployed their app, new metrics and data is now available in the platform engineer dashboard seen in the previous step `https://grafana.172.31.0.2.nip.io`:
 
-Now that the app developer has deployed their app, new metrics and data is now available in the platform engineer dashboard seen in the previous step `https://grafana.172.31.0.2.nip.io`. Including:
+* Gateways, routes and policies
+* Constraints & Violations (there should be no violations present)
+* APIs Summary
 
-* Gateways & both route and gateway policies 
-* Constraints & Violations (Should be no violations present)
-* APIs Summary 
+## Summary
+
+You now have a local environment with a reference architecture to design and deploy an API in a kube native way, using Kuadrant and other open source tools.
