@@ -256,6 +256,7 @@ kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
 # Push this change back to your fork
 git add resources/ratelimitpolicy.yaml
 git commit -am "Generated RateLimitPolicy"
+git push # You may need to set an upstream as well
 ```
 
 Lastly, we'll generate a Gateway API `HTTPRoute` to service our APIs:
@@ -268,11 +269,12 @@ kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P
 kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P > resources/httproute.yaml
 
 # Apply this resource to our cluster, setting the hostname in via the KUADRANT_ZONE_ROOT_DOMAIN env var:
-cat ./resources/httproute.yaml | envsubst | kubectl --context kind-api-workload-1 apply -f -
+kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
 
 # Push this change back to your fork
 git add resources/httproute.yaml
 git commit -am "Generated HTTPRoute"
+git push # You may need to set an upstream as well
 ```
 
 ### Check our applied policies
