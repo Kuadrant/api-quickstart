@@ -131,9 +131,18 @@ kubectl --context kind-api-workload-1 apply -k ./resources/eu-cluster/
 
 <!-- TODO: fix tlspolicy: mgc-policy-controller-6d8dbf6989-54p6k policy-controller 2024-01-19T07:57:27Z	DEBUG	tlspolicy	ComputeGatewayDiffs	{"TLSPolicy": {"name":"prod-web","namespace":"multi-cluster-gateways"}, "#missing-policy-ref": 0, "#valid-policy-ref": 1, "#invalid-policy-ref": 0} -->
 
+
+Our Petstore app is running on one of our workload clusters. To access its Swagger UI, run:
+
+```bash
+echo https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/docs/
+```
+
+Then navigate to the displayed URL, which will direct you to a Swagger UI hosted from the same app that provides some of the APIs we'll be looking at.
+
 ### Exploring the Open API Specification
 
-In the petstore app take a look at the Open API spec:
+In the Petstore app, take a look at the Open API spec:
 
 ```bash
 cd ~/api-poc-petstore
@@ -145,20 +154,223 @@ cat openapi.yaml
 #   version: 1.0.18
 ```
 
-Import this spec into Apicurito to explore further:
+Patch the `openapi.yaml` spec file to point at our working, deployed service:
 
-* Open Apicurito: https://apicurito.172.31.0.2.nip.io/
-* Click `Open API` and select the `openapi.yaml` spec from `~/api-poc-petstore`
+```bash
+sed -i$(uname | grep -q Darwin && echo " ''") "s|- url: /api/v3|- url: https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/api/v3/|" openapi.yaml
+```
 
-TODO
+## Exploring Kuadrant Extensions
 
-* Open api spec in apicurio studio, showing x-kuadrant extensions & making requests (with swagger) to the show rate limit policy
-* Modify x-kuadrant extension to change rate limit
-* Export spec and generate resources with kuadrantctl
-* Apply generated resources to petstore app in cluster
-* Back in apicurio studio, modify x-kuadrant extension to add auth to /store/inventory endpoint
-* Export spec, generate resources and reapply to cluster
-* Verify auth policy via swagger
+We've included a number of sample `x-kuadrant` extensions in the OAS spec already:
+
+- At the top-level of our spec, we've defined an `x-kuadrant` extension to detail the Gateway API Gateway associated with our app:
+
+```yaml
+  x-kuadrant:
+    route:
+      name: petstore
+      namespace: petstore
+      labels:
+        deployment: petstore
+        owner: cferreir
+      hostnames:
+      - petstore.$KUADRANT_ZONE_ROOT_DOMAIN
+      parentRefs:
+      - name: prod-web
+        namespace: kuadrant-multi-cluster-gateways
+        kind: Gateway
+```
+
+- In `/user/login`, we have a `rate_limit` set and a Gateway API `backendRef`set. The rate limit policy for this endpoint restricts usage of this endpoint to 2 requests in a 10 second window:
+    ```yaml
+    x-kuadrant:
+      backendRefs:
+      - name: petstore
+        namespace: petstore
+        port: 8080
+      rate_limit:
+      rates:
+      - limit: 2
+        duration: 10
+        unit: second
+    ```
+- In ` /store/inventory`, we have also have a `rate_limit` and a Gateway API `backendRef`set. The rate limit policy for the endpoint restricts usage of this endpoint to 10 requests in a 10 second window:
+    ```yaml
+    x-kuadrant:
+      backendRefs:
+      - name: petstore
+        namespace: petstore
+        port: 8080
+      rate_limit:
+        rates:
+        - limit: 10
+          duration: 10
+          unit: second
+    ```
+- We also have a `securityScheme` setup for apiKey auth, powered by Authorino. We'll show this in more detail a little later:
+  ```yaml
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
+  ```
+
+These extensions allow us to automatically generate Kuadrant Kubernetes resources, including AuthPolicies, RateLimitPolicies and Gateway API resources such as HTTPRoutes.
+
+<!-- TODO: links to policy API docs -->
+
+### kuadrantctl
+
+`kuadrantctl` supports the generation of various Kubernetes resources via OAS specs. Let's run some commands to generate some of these resources, check these into your forked repo, and apply these to our running workload to implement Rate Limiting and Auth Policies.
+
+
+### Installing `kuadrantctl`
+Download `kuadrantctl` from the `v0.2.0` release artifacts: 
+
+https://github.com/Kuadrant/kuadrantctl/releases/tag/v0.2.0
+
+And drop the `kuadrantctl` binary somewhere into your $PATH (e.g. `/usr/local/bin/`).
+
+For this next part of the tutorial, we recommend installing [`yq`](https://github.com/mikefarah/yq) to pretty-print YAML resources.
+
+### Generating Kuadrant resources with `kuadrantctl`
+
+In your fork of the petstore app
+
+Firstly, we'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
+
+```bash
+# Show generated AuthPolicy
+kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P
+
+# Generate this resource and save:
+kuadrantctl generate gatewayapi authpolicy --oas openapi.yaml | yq -P > resources/authpolicy.yaml
+
+# Apply this resource to our cluster:
+kubectl --context kind-api-workload-1 apply -f ./resources/authpolicy.yaml
+
+# Push this change back to your fork
+git commit -am "Generated AuthPolicy" && git push
+```
+
+Next we'll generate a `RateLimitPolicy`, to protect our APIs with the limits we have setup in our OAS spec:
+```bash
+# Show generated RateLimitPolicy
+kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P
+
+# Generate this resource and save:
+kuadrantctl generate gatewayapi ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
+
+# Apply this resource to our cluster:
+kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
+
+# Push this change back to your fork
+git commit -am "Generated RateLimitPolicy" && git push
+```
+
+Lastly, we'll generate a Gateway API `HTTPRoute` to service our APIs:
+
+```bash
+# Show generated HTTPRoute:
+kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P
+
+# Generate this resource and save:
+kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P > resources/httproute.yaml
+
+# Apply this resource to our cluster:
+kubectl --context kind-api-workload-1 apply -f ./resources/httproute.yaml
+
+# Push this change back to your fork
+git commit -am "Generated HTTPRoute" && git push
+```
+## Check our applied policies
+
+Navigate to your app's Swagger UI:
+
+```bash
+echo https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/docs/
+```
+
+Let's check that our `RateLimitPolicy` for the `/store/inventory` has been applied and works correctly. Recall, our OAS spec had the following limits applied:
+
+```yaml
+x-kuadrant:
+  ...
+  rate_limit:
+    rates:
+    - limit: 10
+      duration: 10
+      unit: second
+```
+Navigate to the `/store/inventory` API, click `Try it out`, and `Execute`.
+
+You'll see a response similar to:
+
+```json
+{
+  "available": 10,
+  "pending": 5,
+  "sold": 3
+}
+```
+
+This API has a rate limit applied, so if you send more than 10 requests in a 10 second window, you will see a `429` HTTP Status code from responses, and a "Too Many Requests" message in the response body. Click `Execute` quickly in succession to see your `RateLimitPolicy` in action.
+
+
+### Policy Adjustments
+
+Run the Swagger UI editor to explore the OAS spec and make some tweaks:
+
+```bash
+docker run -p 8080:8080 -v $(pwd):/tmp -e SWAGGER_FILE=/tmp/openapi.yaml swaggerapi/swagger-editor
+
+# Navigate to the running Swager Editor
+open http://localhost:8080
+```
+
+Our `/store/inventory` API needs some additonal rate limiting. This is one of our slowest, most expensive services, so we'd like to rate limit it further.
+
+In your `openapi.yaml`, navigate to the `/store/inventory` endpoint in the `paths` block. Modify the rate_limit block to further restrict the amount of requests this endpoint can serve to 2 requests per 10 seconds:
+
+```yaml
+x-kuadrant:
+  ...
+  rate_limit:
+    rates:
+    - limit: 2
+      duration: 10
+      unit: second
+```
+
+Save your updated spec - `File` > `Save as YAML` > and update your existing `openapi.yaml`.
+
+Next we'll re-generate our `RateLimitPolicy` with `kuadrantctl`:
+```bash
+# Show generated RateLimitPolicy
+kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P
+
+# Generate this resource and save:
+kuadrantctl generate gatewayapi ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
+
+# Apply this resource to our cluster:
+kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
+
+# Push this change back to your fork
+git commit -am "Generated RateLimitPolicy" && git push
+```
+
+In your app's Swagger UI:
+
+```bash
+echo https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/docs/
+```
+
+Navigate to the `/store/inventory` API one more, click `Try it out`, and `Execute`.
+
+You'll see the effects of our new `RateLimitPolicy` applied. If you now send more than 2 requests in a 10 second window, you'll be rate-limited.
+
 
 ### Multicluster Bonanza
 
