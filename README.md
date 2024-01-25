@@ -126,7 +126,7 @@ kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 
 Configure the app `REGION` to be `eu`:
 
 ```bash
-kubectl --context kind-api-workload-1 apply -k ./resources/local-cluster/
+kubectl --context kind-api-workload-1 apply -k ./resources/eu-cluster/
 ```
 
 <!-- TODO: fix tlspolicy: mgc-policy-controller-6d8dbf6989-54p6k policy-controller 2024-01-19T07:57:27Z	DEBUG	tlspolicy	ComputeGatewayDiffs	{"TLSPolicy": {"name":"prod-web","namespace":"multi-cluster-gateways"}, "#missing-policy-ref": 0, "#valid-policy-ref": 1, "#invalid-policy-ref": 0} -->
@@ -162,7 +162,22 @@ TODO
 
 ### Multicluster Bonanza
 
-Deploy the petstore to 2nd cluster:
+Deploy the Gateway to the 2nd cluster:
+
+```bash
+kubectl --context kind-api-control-plane patch placement http-gateway --namespace multi-cluster-gateways --type='json' -p='[{"op": "replace", "path": "/spec/numberOfClusters", "value":2}]'
+```
+
+Label the 1st cluster as being in the 'EU' region,
+and the 2nd cluster as being in the 'US' region.
+These labels are used by the DNSPolicy for configuring geo DNS.
+
+```bash
+kubectl --context kind-api-control-plane label managedcluster kind-api-workload-1 kuadrant.io/lb-attribute-geo-code=EU --overwrite
+kubectl --context kind-api-control-plane label managedcluster kind-api-workload-2 kuadrant.io/lb-attribute-geo-code=US --overwrite
+```
+
+Deploy the petstore to the 2nd cluster:
 
 ```bash
 cd ~/api-poc-petstore
@@ -172,21 +187,11 @@ kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-2 
 Configure the app `REGION` to be `us`:
 
 ```bash
-kubectl --context kind-api-workload-2 apply -k ./resources/spoke-cluster/
+kubectl --context kind-api-workload-2 apply -k ./resources/us-cluster/
 ```
-
-<!-- TODO: Deploy Gateway to 2nd cluster -->
-
-Describe the DNSPolicy
 
 ```bash
 kubectl --context kind-api-control-plane describe dnspolicy prod-web -n multi-cluster-gateways
-```
-
-Show ManagedCluster labelling
-
-```bash
-kubectl --context kind-api-control-plane get managedcluster -A -o custom-columns="NAME:metadata.name,URL:spec.managedClusterClientConfigs[0].url,REGION:metadata.labels.kuadrant\.io/lb-attribute-geo-code"
 ```
 
 Show DNS resolution per geo region
