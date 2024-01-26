@@ -144,7 +144,7 @@ cat openapi.yaml
 Patch the `openapi.yaml` spec file to point at our working, deployed service. This will be used later when trying out the API.
 
 ```bash
-sed -i$(uname | grep -q Darwin && echo " ''") "s|- url: /api/v3|- url: https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/api/v3/|" openapi.yaml
+sed -i '' -e "s|- url: /api/v3|- url: https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/api/v3/|" openapi.yaml
 ```
 
 <!--TODO also result in a file called openapi.yaml'' on mac -->
