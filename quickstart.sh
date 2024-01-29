@@ -125,7 +125,13 @@ if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
   done
 fi
 
-
+# Temporary fix for RLP issue
+# https://kubernetes.slack.com/archives/C05J0D0V525/p1706523293912619
+if [[ -n "${API_WORKLOAD_CLUSTERS_COUNT}" ]]; then
+  for ((i = 1; i <= ${API_WORKLOAD_CLUSTERS_COUNT}; i++)); do
+    kubectl --context kind-${KIND_CLUSTER_WORKLOAD}-${i} -n kuadrant-system delete po -l app=kuadrant,control-plane=controller-manager
+  done
+fi
 
 kubectl config use-context kind-${KIND_CLUSTER_CONTROL_PLANE}
 
