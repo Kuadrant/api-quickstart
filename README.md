@@ -94,10 +94,6 @@ spec:
 EOF
 ```
 
-#### Route 53 DNS Zone
-
-When the DNS Policy has been created, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Navigate to Route53 and you should see some new records in the zone. The record will have `petstore` in its name.
-
 ### Platform Overview
 
 Since we have created all the policies that Gatekeeper had the guardrails around, you should no longer see any constraints in violation. This can be seen back in the `Stitch: Platform Engineer Dashboard` in Grafana at [https://grafana.172.31.0.2.nip.io](https://grafana.172.31.0.2.nip.io)
@@ -121,6 +117,19 @@ Then deploy it to the first workload cluster:
 cd ~/api-poc-petstore
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
 ```
+
+This will deploy:
+
+* A `petstore` Namespace
+* A `Secret`, containing a static API key that we'll use later for auth
+* A `Service` and `Deployment` for our petstore app
+* A Gateway API `HTTPRoute` for our petstore app
+
+#### Route 53 DNS Zone
+
+When the DNS Policy has been created, and the previously created `HTTPRoute` has been attached, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Navigate to Route53 and you should see some new records in the zone. The record will have `petstore` in its name.
+
+### Configuring the region label
 
 Configure the app `REGION` to be `eu`:
 
@@ -146,8 +155,6 @@ Patch the `openapi.yaml` spec file to point at our working, deployed service. Th
 ```bash
 sed -i '' -e "s|- url: /api/v3|- url: https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/api/v3/|" openapi.yaml
 ```
-
-<!--TODO also result in a file called openapi.yaml'' on mac -->
 
 ## (Application developer) API security
 
