@@ -20,6 +20,7 @@ The sections in this document are grouped by the persona that is typically assoc
 - `kubectl`: https://kubernetes.io/docs/reference/kubectl/
 - `kustomize`: https://kustomize.io/
 - An [AWS account](https://aws.amazon.com/) with a Secret Access Key and Access Key ID. You will also need to a [Route 53](https://docs.aws.amazon.com/route53/) zone.
+- `python3` and `pip3`: This is optional, but recommended if you want to see the traffic management feature in action using geo dns.
 
 ## (Platform engineer) Platform Setup
 
@@ -335,15 +336,16 @@ x-kuadrant:
       unit: second
 ```
 
-Save your updated spec - `File` > `Save as YAML` > and update your existing `openapi.yaml`.
+Save your updated spec - `File` > `Save as YAML` > and update your existing `openapi.yaml`. You may need to copy the file from your Downloads folder to the location of the petstore repository.
 
 Next we'll re-generate our `RateLimitPolicy` with `kuadrantctl`:
+
 ```bash
 # Show generated RateLimitPolicy
 kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P
 
 # Generate this resource and save:
-kuadrantctl generate gatewayapi ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
+kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
@@ -361,6 +363,8 @@ echo https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/docs/
 Navigate to the `/store/inventory` API one more, click `Try it out`, and `Execute`.
 
 You'll see the effects of our new `RateLimitPolicy` applied. If you now send more than 2 requests in a 10 second window, you'll be rate-limited.
+
+**Note:** :exclamation: It may take a few minutes for the updated RateLimitPolicy to be configured with the modified rate limit.
 
 ## (Application developer) Scaling the application
 
@@ -394,15 +398,36 @@ kubectl --context kind-api-control-plane label managedcluster kind-api-workload-
 kubectl --context kind-api-control-plane label managedcluster kind-api-workload-2 kuadrant.io/lb-attribute-geo-code=US --overwrite
 ```
 
-## (API consumer) Accessing the API
+## (API consumer) Accessing the API from multiple regions
 
-Show DNS resolution per geo region
+To demonstrate traffic management by geographical region, we'll use a tool called 'geosight'. This tool resolves hostnames from different regions, fetches a website from the resulting DNS record address and takes a screenshot. The petstore app has been configured to serve a flag image based on which region it is running in. In the 1st cluster, the EU flag is used. In the 2nd cluster, the US flag is used.
 
-TODO
+To install 'geosight', run the following commands:
 
-Show rate limiting working on both clusters/apps.
+```bash
+cd ~
+git clone git@github.com:jasonmadigan/geosight.git
+cd geosight
+pip3 install -r requirements.txt
+playwright install
+```
 
-TODO
+Then run it using:
+
+```bash
+python3 app.py
+```
+
+Access the webapp at [http://127.0.0.1:5001/](http://127.0.0.1:5001/).
+In the input box, type the address from below and click the `Fetch` button:
+
+```bash
+echo https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/server/details
+```
+
+After a moment you should see dns results for different regions, and a corresponding screenshot.
+
+If you want to experiment with other regions, check out the [Configuration section](https://github.com/jasonmadigan/geosight?tab=readme-ov-file#configuration) for geosight and the [Kuadrant docs](https://docs.kuadrant.io/multicluster-gateway-controller/docs/how-to/multicluster-loadbalanced-dnspolicy/#configuring-cluster-geo-locations) for geo loadbalancing.
 
 ## (App developer) API traffic monitoring
 
