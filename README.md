@@ -284,6 +284,8 @@ Navigate to your app's Swagger UI:
 echo https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/docs/
 ```
 
+#### RateLimitPolicy
+
 Let's check that our `RateLimitPolicy` for the `/store/inventory` has been applied and works correctly. Recall, our OAS spec had the following limits applied:
 
 ```yaml
@@ -308,6 +310,29 @@ You'll see a response similar to:
 ```
 
 This API has a rate limit applied, so if you send more than 10 requests in a 10 second window, you will see a `429` HTTP Status code from responses, and a "Too Many Requests" message in the response body. Click `Execute` quickly in succession to see your `RateLimitPolicy` in action.
+
+#### AuthPolicy
+
+Let's check that our `AuthPolicy` for the `/store/admin` endpoint has been applied and works correctly. Recall, our OAS spec had the following securitySchemes applied:
+
+```yaml
+  securitySchemes:
+    api_key:
+      type: apiKey
+      name: api_key
+      in: header
+```
+
+Navigate to the `/store/admin` API, click `Try it out`, and `Execute`.
+You'll get a 401 response.
+
+You can set a value for the `api_key` header by clicking `Authorize` at the top of the page. Set a value of `secret`.
+This api key value is stored in the `petstore-api-key` Secret in the `petstore` namespace.
+Try the `/store/admin` endpoint again and you should get a 200 response with the following:
+
+```json
+{"message":"You are an admin!"}
+```
 
 ### Policy Adjustments
 
