@@ -227,11 +227,8 @@ For this next part of the tutorial, we recommend installing [`yq`](https://githu
 In your fork of the petstore app, we'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
 
 ```bash
-# Show the generated AuthPolicy
-kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P
-
 # Generate this resource and save:
-kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P > resources/authpolicy.yaml
+kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P | tee resources/authpolicy.yaml
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/authpolicy.yaml
@@ -245,11 +242,8 @@ git push # You may need to set an upstream as well
 Next we'll generate a `RateLimitPolicy`, to protect our APIs with the limits we have setup in our OAS spec:
 
 ```bash
-# Show generated RateLimitPolicy
-kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P
-
 # Generate this resource and save:
-kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
+kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P | tee resources/ratelimitpolicy.yaml
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
@@ -263,11 +257,8 @@ git push # You may need to set an upstream as well
 Lastly, we'll generate a Gateway API `HTTPRoute` to service our APIs:
 
 ```bash
-# Show generated HTTPRoute:
-kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P
-
 # Generate this resource and save:
-kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P > resources/httproute.yaml
+kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P | tee resources/httproute.yaml
 
 # Apply this resource to our cluster, setting the hostname in via the KUADRANT_ZONE_ROOT_DOMAIN env var:
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
@@ -341,11 +332,8 @@ Save your updated spec - `File` > `Save as YAML` > and update your existing `ope
 Next we'll re-generate our `RateLimitPolicy` with `kuadrantctl`:
 
 ```bash
-# Show generated RateLimitPolicy
-kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P
-
 # Generate this resource and save:
-kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P > resources/ratelimitpolicy.yaml
+kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P | tee resources/ratelimitpolicy.yaml
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
