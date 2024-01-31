@@ -17,8 +17,11 @@ The sections in this document are grouped by the persona that is typically assoc
 
 ## Pre-requisities
 
+- `docker`: https://www.docker.com/products/docker-desktop/
 - `kubectl`: https://kubernetes.io/docs/reference/kubectl/
 - `kustomize`: https://kustomize.io/
+- `helm`: https://helm.sh/docs/intro/install/
+- `operator-sdk`: https://sdk.operatorframework.io/docs/installation/
 - An [AWS account](https://aws.amazon.com/) with a Secret Access Key and Access Key ID. You will also need to a [Route 53](https://docs.aws.amazon.com/route53/) zone.
 - `python3` and `pip3`: This is optional, but recommended if you want to see the traffic management feature in action using geo dns.
 
@@ -43,6 +46,20 @@ cd api-quickstart
 ```
 
 This will take several minutes as 3 local kind clusters are started and configured in a hub and spoke architecture.
+The following components will be installed on the clusters:
+
+- Hub
+  - [Open Cluster Management](https://open-cluster-management.io/), as a 'hub' cluster
+  - [Kuadrant Multi Cluster Gateway Controller](https://docs.kuadrant.io/multicluster-gateway-controller/), for managing a Gateway in multiple clusters centrally
+  - [Gatekeeper](https://github.com/open-policy-agent/gatekeeper), for constraints on Gateway Policy requirements
+  - [Thanos](https://github.com/thanos-io/thanos), for receiving metrics centrally
+  - [Grafana](https://github.com/grafana/grafana), for visualising API & Gateway metrics
+- Spoke x2
+  - [Open Cluster Management](https://open-cluster-management.io/), as a 'spoke' cluster
+  - [Kuadrant Operator](https://docs.kuadrant.io/kuadrant-operator/), for auth and rate limiting policies attached to a HTTPRoute
+  - [Istio](https://istio.io/latest/docs/), with the Gateway API CRDs as the Gateway for ingress trafic
+  - [MetalLB](https://metallb.universe.tf/), for exposing the Gateway service on the local network
+  - [Prometheus](https://prometheus.io/), for scraping and federating metrics to the hub
 
 ### Verify the Gateway and configuration
 
@@ -103,13 +120,13 @@ Since we have created all the policies that Gatekeeper had the guardrails around
 
 ### API Design
 
-<!-- TODO: Make this repo public somewhere -->
-
-[Fork](https://github.com/Kuadrant/api-petstore/fork) and clone the Petstore App at https://github.com/Kuadrant/api-petstore.
+[Fork](https://github.com/Kuadrant/api-petstore/fork) and/or clone the Petstore App at https://github.com/Kuadrant/api-petstore
 
 ```bash
 cd ~
-git clone git@github.com:<your_github_username>/api-petstore
+git clone git@github.com:kuadrant/api-petstore
+# Or if you forked the repository:
+# git clone git@github.com:<your_github_username>/api-petstore
 ```
 
 Then deploy it to the first workload cluster:
@@ -219,7 +236,10 @@ These extensions allow us to automatically generate Kuadrant Kubernetes resource
 
 ### kuadrantctl
 
-`kuadrantctl` is a cli that supports the generation of various Kubernetes resources via OAS specs. Let's run some commands to generate some of these resources, check these into your forked repo, and apply these to our running workload to implement rate limiting and auth.
+`kuadrantctl` is a cli that supports the generation of various Kubernetes resources via OAS specs.
+Let's run some commands to generate some of these resources.
+If you forked the api-pestore repo, you can check them in also.
+Let's apply these to our running workload to implement rate limiting and auth.
 
 ### Installing `kuadrantctl`
 Download `kuadrantctl` from the `v0.2.0` release artifacts:
@@ -232,7 +252,7 @@ For this next part of the tutorial, we recommend installing [`yq`](https://githu
 
 ### Generating Kuadrant resources with `kuadrantctl`
 
-In your fork of the petstore app, we'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
+We'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
 
 ```bash
 # Generate this resource and save:
@@ -240,11 +260,6 @@ kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P | tee resour
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/authpolicy.yaml
-
-# Push this change back to your fork
-git add resources/authpolicy.yaml
-git commit -am "Generated AuthPolicy"
-git push # You may need to set an upstream as well
 ```
 
 Next we'll generate a `RateLimitPolicy`, to protect our APIs with the limits we have setup in our OAS spec:
@@ -255,11 +270,6 @@ kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P | tee r
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
-
-# Push this change back to your fork
-git add resources/ratelimitpolicy.yaml
-git commit -am "Generated RateLimitPolicy"
-git push # You may need to set an upstream as well
 ```
 
 Lastly, we'll generate a Gateway API `HTTPRoute` to service our APIs:
@@ -270,11 +280,6 @@ kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P | tee resou
 
 # Apply this resource to our cluster, setting the hostname in via the KUADRANT_ZONE_ROOT_DOMAIN env var:
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
-
-# Push this change back to your fork
-git add resources/httproute.yaml
-git commit -am "Generated HTTPRoute"
-git push # You may need to set an upstream as well
 ```
 
 ### Check our applied policies
@@ -370,9 +375,15 @@ kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P | tee r
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
+```
 
-# Push this change back to your fork
-git commit -am "Generated RateLimitPolicy" && git push
+At this stage you can optionally check in all the changes to the repo if you forked it.
+
+```bash
+# Optionally add, commit & push the changes to your fork
+git add resources
+git commit -am "Generated AuthPolicy,RateLimitPolicy & HTTPRoute"
+git push # You may need to set an upstream as well
 ```
 
 In your app's Swagger UI:
