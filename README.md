@@ -105,17 +105,17 @@ Since we have created all the policies that Gatekeeper had the guardrails around
 
 <!-- TODO: Make this repo public somewhere -->
 
-[Fork](https://github.com/Kuadrant/api-poc-petstore/fork) and clone the Petstore App at https://github.com/Kuadrant/api-poc-petstore.
+[Fork](https://github.com/Kuadrant/api-petstore/fork) and clone the Petstore App at https://github.com/Kuadrant/api-petstore.
 
 ```bash
 cd ~
-git clone git@github.com:<your_github_username>/api-poc-petstore
+git clone git@github.com:<your_github_username>/api-petstore
 ```
 
 Then deploy it to the first workload cluster:
 
 ```bash
-cd ~/api-poc-petstore
+cd ~/api-petstore
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
 ```
 
@@ -143,6 +143,7 @@ kubectl --context kind-api-workload-1 apply -k ./resources/eu-cluster/
 The raw Open API spec can be found in the root of the repo:
 
 ```bash
+cd ~/api-petstore
 cat openapi.yaml
 # ---
 # openapi: 3.0.2
@@ -391,7 +392,7 @@ You'll see the effects of our new `RateLimitPolicy` applied. If you now send mor
 Deploy the petstore to the 2nd cluster:
 
 ```bash
-cd ~/api-poc-petstore
+cd ~/api-petstore
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-2 apply -f-
 ```
 
