@@ -165,12 +165,6 @@ cat openapi.yaml
 #   version: 1.0.18
 ```
 
-Patch the `openapi.yaml` spec file to point at our working, deployed service. This will be used later when trying out the API.
-
-```bash
-sed -i '' -e "s|- url: /api/v3|- url: https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/api/v3/|" openapi.yaml
-```
-
 ## (Application developer) API security
 
 We've included a number of sample `x-kuadrant` extensions in the OAS spec already:
