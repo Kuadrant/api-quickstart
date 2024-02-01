@@ -17,8 +17,11 @@ The sections in this document are grouped by the persona that is typically assoc
 
 ## Pre-requisities
 
+- `docker`: https://www.docker.com/products/docker-desktop/
 - `kubectl`: https://kubernetes.io/docs/reference/kubectl/
 - `kustomize`: https://kustomize.io/
+- `helm`: https://helm.sh/docs/intro/install/
+- `operator-sdk`: https://sdk.operatorframework.io/docs/installation/
 - An [AWS account](https://aws.amazon.com/) with a Secret Access Key and Access Key ID. You will also need to a [Route 53](https://docs.aws.amazon.com/route53/) zone.
 
 ## (Platform engineer) Platform Setup
@@ -36,12 +39,25 @@ export KUADRANT_ZONE_ROOT_DOMAIN=<domain>
 Clone the api-quickstart repo and run the quickstart script:
 
 ```bash
-git clone git@github.com:Kuadrant/api-quickstart.git
-cd api-quickstart
+git clone git@github.com:Kuadrant/api-quickstart.git && cd api-quickstart
 ./quickstart.sh
 ```
 
 This will take several minutes as 3 local kind clusters are started and configured in a hub and spoke architecture.
+The following components will be installed on the clusters:
+
+- Hub
+  - [Open Cluster Management](https://open-cluster-management.io/), as a 'hub' cluster
+  - [Kuadrant Multi Cluster Gateway Controller](https://docs.kuadrant.io/multicluster-gateway-controller/), for managing a Gateway in multiple clusters centrally
+  - [Gatekeeper](https://github.com/open-policy-agent/gatekeeper), for constraints on Gateway Policy requirements
+  - [Thanos](https://github.com/thanos-io/thanos), for receiving metrics centrally
+  - [Grafana](https://github.com/grafana/grafana), for visualising API & Gateway metrics
+- Spoke x2
+  - [Open Cluster Management](https://open-cluster-management.io/), as a 'spoke' cluster
+  - [Kuadrant Operator](https://docs.kuadrant.io/kuadrant-operator/), for auth and rate limiting policies attached to a HTTPRoute
+  - [Istio](https://istio.io/latest/docs/), with the Gateway API CRDs as the Gateway for ingress trafic
+  - [MetalLB](https://metallb.universe.tf/), for exposing the Gateway service on the local network
+  - [Prometheus](https://prometheus.io/), for scraping and federating metrics to the hub
 
 ### Verify the Gateway and configuration
 
@@ -102,19 +118,17 @@ Since we have created all the policies that Gatekeeper had the guardrails around
 
 ### API Design
 
-<!-- TODO: Make this repo public somewhere -->
-
-[Fork](https://github.com/Kuadrant/api-petstore/fork) and clone the Petstore App at https://github.com/Kuadrant/api-petstore.
+[Fork](https://github.com/Kuadrant/api-petstore/fork) and/or clone the Petstore App at https://github.com/Kuadrant/api-petstore
 
 ```bash
-cd ~
-git clone git@github.com:<your_github_username>/api-petstore
+git clone git@github.com:kuadrant/api-petstore && cd api-petstore
+# Or if you forked the repository:
+# git clone git@github.com:<your_github_username>/api-petstore && cd api-petstore
 ```
 
 Then deploy it to the first workload cluster:
 
 ```bash
-cd ~/api-petstore
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
 ```
 
@@ -127,7 +141,7 @@ This will deploy:
 
 #### Route 53 DNS Zone
 
-When the DNS Policy has been created, and the previously created `HTTPRoute` has been attached, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Navigate to Route53 and you should see some new records in the zone. The record will have `petstore` in its name.
+When the DNS Policy has been created, and the previously created `HTTPRoute` has been attached, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Navigate to Route53 and you should see some new records in the zone.
 
 ### Configuring the region label
 
@@ -142,19 +156,12 @@ kubectl --context kind-api-workload-1 apply -k ./resources/eu-cluster/
 The raw Open API spec can be found in the root of the repo:
 
 ```bash
-cd ~/api-petstore
 cat openapi.yaml
 # ---
 # openapi: 3.0.2
 # info:
 #   title: Stitch API Petstore
 #   version: 1.0.18
-```
-
-Patch the `openapi.yaml` spec file to point at our working, deployed service. This will be used later when trying out the API.
-
-```bash
-sed -i '' -e "s|- url: /api/v3|- url: https://petstore.$KUADRANT_ZONE_ROOT_DOMAIN/api/v3/|" openapi.yaml
 ```
 
 ## (Application developer) API security
@@ -218,7 +225,10 @@ These extensions allow us to automatically generate Kuadrant Kubernetes resource
 
 ### kuadrantctl
 
-`kuadrantctl` is a cli that supports the generation of various Kubernetes resources via OAS specs. Let's run some commands to generate some of these resources, check these into your forked repo, and apply these to our running workload to implement rate limiting and auth.
+`kuadrantctl` is a cli that supports the generation of various Kubernetes resources via OAS specs.
+Let's run some commands to generate some of these resources.
+If you forked the api-pestore repo, you can check them in also.
+Let's apply these to our running workload to implement rate limiting and auth.
 
 ### Installing `kuadrantctl`
 Download `kuadrantctl` from the `v0.2.0` release artifacts:
@@ -231,7 +241,7 @@ For this next part of the tutorial, we recommend installing [`yq`](https://githu
 
 ### Generating Kuadrant resources with `kuadrantctl`
 
-In your fork of the petstore app, we'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
+We'll generate an `AuthPolicy` to implement API key auth, per the `securityScheme` in our OAS spec:
 
 ```bash
 # Generate this resource and save:
@@ -239,11 +249,6 @@ kuadrantctl generate kuadrant authpolicy --oas openapi.yaml | yq -P | tee resour
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/authpolicy.yaml
-
-# Push this change back to your fork
-git add resources/authpolicy.yaml
-git commit -am "Generated AuthPolicy"
-git push # You may need to set an upstream as well
 ```
 
 Next we'll generate a `RateLimitPolicy`, to protect our APIs with the limits we have setup in our OAS spec:
@@ -254,11 +259,6 @@ kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P | tee r
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
-
-# Push this change back to your fork
-git add resources/ratelimitpolicy.yaml
-git commit -am "Generated RateLimitPolicy"
-git push # You may need to set an upstream as well
 ```
 
 Lastly, we'll generate a Gateway API `HTTPRoute` to service our APIs:
@@ -269,11 +269,6 @@ kuadrantctl generate gatewayapi httproute --oas openapi.yaml | yq -P | tee resou
 
 # Apply this resource to our cluster, setting the hostname in via the KUADRANT_ZONE_ROOT_DOMAIN env var:
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-1 apply -f-
-
-# Push this change back to your fork
-git add resources/httproute.yaml
-git commit -am "Generated HTTPRoute"
-git push # You may need to set an upstream as well
 ```
 
 ### Check our applied policies
@@ -340,11 +335,9 @@ Run the Swagger UI editor to explore the OAS spec and make some tweaks:
 
 ```bash
 docker run -p 8080:8080 -v $(pwd):/tmp -e SWAGGER_FILE=/tmp/openapi.yaml swaggerapi/swagger-editor
-
-# Navigate to the running Swager Editor
-open http://localhost:8080
 ```
 
+You should be able to access the Swagger Editor at [http://localhost:8080](http://localhost:8080).
 Our `/store/inventory` API needs some additonal rate limiting. This is one of our slowest, most expensive services, so we'd like to rate limit it further.
 
 In your `openapi.yaml`, navigate to the `/store/inventory` endpoint in the `paths` block. Modify the rate_limit block to further restrict the amount of requests this endpoint can serve to 2 requests per 10 seconds:
@@ -369,9 +362,15 @@ kuadrantctl generate kuadrant ratelimitpolicy --oas openapi.yaml | yq -P | tee r
 
 # Apply this resource to our cluster:
 kubectl --context kind-api-workload-1 apply -f ./resources/ratelimitpolicy.yaml
+```
 
-# Push this change back to your fork
-git commit -am "Generated RateLimitPolicy" && git push
+At this stage you can optionally check in all the changes to the repo if you forked it.
+
+```bash
+# Optionally add, commit & push the changes to your fork
+git add resources
+git commit -am "Generated AuthPolicy,RateLimitPolicy & HTTPRoute"
+git push # You may need to set an upstream as well
 ```
 
 In your app's Swagger UI:
@@ -391,7 +390,6 @@ You'll see the effects of our new `RateLimitPolicy` applied. If you now send mor
 Deploy the petstore to the 2nd cluster:
 
 ```bash
-cd ~/api-petstore
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-2 apply -f-
 ```
 
@@ -434,9 +432,7 @@ To demonstrate traffic management by geographical region, we'll use a tool calle
 To install 'geosight', run the following commands:
 
 ```bash
-cd ~
-git clone git@github.com:jasonmadigan/geosight.git
-cd geosight
+git clone git@github.com:jasonmadigan/geosight.git && cd geosight
 pip3 install -r requirements.txt
 playwright install
 ```
