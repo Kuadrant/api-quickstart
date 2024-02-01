@@ -480,3 +480,15 @@ Now that the app developer has deployed their app, new metrics and data is now a
 ## Summary
 
 You now have a local environment with a reference architecture to design and deploy an API in a kube native way, using Kuadrant and other open source tools.
+
+
+## Cleanup
+
+To destroy the previously created `kind` clusters, run:
+
+```bash
+./cleanup.sh
+```
+
+> [!NOTE]  
+> DNS records in AWS will remain after cleanup - you can remove these from your zone manually.
