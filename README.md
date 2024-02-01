@@ -79,7 +79,9 @@ To view the above constraints in kubernetes, run this command:
 kubectl --context kind-api-control-plane get constraints
 ```
 
-**Note:** :exclamation: Since a gateway has been created automatically, along with a TLSPolicy, the violation for a missing DNSPolicy will be active until one is created.
+!!! info
+
+    Since a gateway has been created automatically, along with a `TLSPolicy`, the violation for a missing `DNSPolicy` will be active until one is created.
 
 ### Grafana dashboard view
 
@@ -420,8 +422,9 @@ kubectl --context kind-api-control-plane label managedcluster kind-api-workload-
 
 ## (API consumer) Accessing the API from multiple regions
 
-> [!NOTE]  
-> This section is **optional**. If you'd rather skip this part, you can skip forward to the "(App developer) API traffic monitoring" section.
+!!! info
+
+    This section is **optional**. If you'd rather skip this part, you can skip forward to the "(App developer) API traffic monitoring" section.
 
 ![Geosight Image](images/geosight.png)
 
@@ -492,5 +495,6 @@ To destroy the previously created `kind` clusters, run:
 ./cleanup.sh
 ```
 
-> [!NOTE]  
-> DNS records in AWS will remain after cleanup - you can remove these from your zone manually.
+!!! info
+
+    DNS records in AWS will remain after cleanup - you can remove these from your zone manually.
