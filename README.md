@@ -145,7 +145,7 @@ This will deploy:
 
 #### Route 53 DNS Zone
 
-When the DNS Policy has been created, and the previously created `HTTPRoute` has been attached, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Navigate to Route53 and you should see some new records in the zone. The record will have `petstore` in its name.
+When the DNS Policy has been created, and the previously created `HTTPRoute` has been attached, a DNS record custom resource will also be created in the cluster resulting in records being created in your AWS Route53. Navigate to Route53 and you should see some new records in the zone.
 
 ### Configuring the region label
 
