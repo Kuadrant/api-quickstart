@@ -391,6 +391,8 @@ Deploy the petstore to the 2nd cluster:
 
 ```bash
 kustomize build ./resources/ | envsubst | kubectl --context kind-api-workload-2 apply -f-
+kubectl --context kind-api-workload-2 apply -f ./resources/authpolicy.yaml
+kubectl --context kind-api-workload-2 apply -f ./resources/ratelimitpolicy.yaml
 ```
 
 Configure the app `REGION` to be `us`:
