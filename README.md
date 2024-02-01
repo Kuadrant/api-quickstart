@@ -346,11 +346,9 @@ Run the Swagger UI editor to explore the OAS spec and make some tweaks:
 
 ```bash
 docker run -p 8080:8080 -v $(pwd):/tmp -e SWAGGER_FILE=/tmp/openapi.yaml swaggerapi/swagger-editor
-
-# Navigate to the running Swager Editor
-open http://localhost:8080
 ```
 
+You should be able to access the Swagger Editor at [http://localhost:8080](http://localhost:8080).
 Our `/store/inventory` API needs some additonal rate limiting. This is one of our slowest, most expensive services, so we'd like to rate limit it further.
 
 In your `openapi.yaml`, navigate to the `/store/inventory` endpoint in the `paths` block. Modify the rate_limit block to further restrict the amount of requests this endpoint can serve to 2 requests per 10 seconds:
