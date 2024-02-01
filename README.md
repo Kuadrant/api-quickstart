@@ -20,7 +20,6 @@ The sections in this document are grouped by the persona that is typically assoc
 - `kubectl`: https://kubernetes.io/docs/reference/kubectl/
 - `kustomize`: https://kustomize.io/
 - An [AWS account](https://aws.amazon.com/) with a Secret Access Key and Access Key ID. You will also need to a [Route 53](https://docs.aws.amazon.com/route53/) zone.
-- `python3` and `pip3`: This is optional, but recommended if you want to see the traffic management feature in action using geo dns.
 
 ## (Platform engineer) Platform Setup
 
@@ -420,6 +419,15 @@ kubectl --context kind-api-control-plane label managedcluster kind-api-workload-
 ```
 
 ## (API consumer) Accessing the API from multiple regions
+
+> [!NOTE]  
+> This section is **optional**. If you'd rather skip this part, you can skip forward to the "(App developer) API traffic monitoring" section.
+
+![Geosight Image](images/geosight.png)
+
+### Pre-requisites
+
+- `python3` and `pip3`: these are required for this part of the walkthrough
 
 To demonstrate traffic management by geographical region, we'll use a tool called 'geosight'. This tool resolves hostnames from different regions, fetches a website from the resulting DNS record address and takes a screenshot. The petstore app has been configured to serve a flag image based on which region it is running in. In the 1st cluster, the EU flag is used. In the 2nd cluster, the US flag is used.
 
