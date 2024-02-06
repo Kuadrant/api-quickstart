@@ -10,6 +10,13 @@ then
         echo "Try 'brew install coreutils'"
     fi
     exit
+elif ! command -v envsubst &> /dev/null
+then
+    echo "'envsubst' command not found."
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "Try 'brew install gettext'"
+    fi
+    exit
 fi
 
 wait_for() {
