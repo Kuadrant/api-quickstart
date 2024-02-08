@@ -15,6 +15,8 @@ The sections in this document are grouped by the persona that is typically assoc
 - the *application developer*, who designs, builds and maintains applications and APIs,
 - and the *api consumer*, who makes API calls to the API
 
+<iframe width="100%" height="400" src="https://www.youtube.com/embed/vbWM8st5PjM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+
 ## Pre-requisities
 
 - `docker`: https://www.docker.com/products/docker-desktop/
