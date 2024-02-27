@@ -138,7 +138,7 @@ deployMetalLB () {
 
   kubectl config use-context kind-${clusterName}
   echo "Deploying MetalLB to ${clusterName}"
-  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/metallb?ref=main" | kubectl apply -f -
+  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/metallb?ref=v0.3.0" | kubectl apply -f -
   echo "Waiting for deployments to be ready ..."
   kubectl -n metallb-system wait --for=condition=ready pod --selector=app=metallb --timeout=600s
   configureMetalLB ${clusterName} ${metalLBSubnet}
@@ -148,7 +148,7 @@ deployIngressController () {
   clusterName=${1}
   kubectl config use-context kind-${clusterName}
   echo "Deploying Ingress controller to ${clusterName}"
-  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/ingress-nginx?ref=main" --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -
+  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/ingress-nginx?ref=v0.3.0" --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -
   echo "Waiting for deployments to be ready ..."
   kubectl -n ingress-nginx wait --timeout=600s --for=condition=Available deployments --all
 }
@@ -159,7 +159,7 @@ deployCertManager() {
 
   kubectl config use-context kind-${clusterName}
 
-  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/cert-manager?ref=main" --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -
+  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/cert-manager?ref=v0.3.0" --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -
 
   echo "Waiting for Cert Manager deployments to be ready..."
   kubectl -n cert-manager wait --timeout=300s --for=condition=Available deployments --all
@@ -167,7 +167,7 @@ deployCertManager() {
   kubectl delete validatingWebhookConfiguration mgc-cert-manager-webhook
   kubectl delete mutatingWebhookConfiguration mgc-cert-manager-webhook
   # Apply the default glbc-ca issuer
-  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/policy-controller/default?ref=main" --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -
+  ${KUSTOMIZE_BIN} build "github.com/kuadrant/multicluster-gateway-controller.git/config/policy-controller/default?ref=v0.3.0" --enable-helm --helm-command ${HELM_BIN} | kubectl apply -f -
 }
 
 deployExternalDNS() {
