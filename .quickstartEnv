@@ -31,7 +31,7 @@ export KUSTOMIZE_BIN=$(dockerBinCmd "kustomize")
 export YQ_BIN=$(dockerBinCmd "yq")
 export ISTIOCTL_BIN="${BIN_DIR}istioctl"
 export OPERATOR_SDK_BIN="${BIN_DIR}operator-sdk"
-export CLUSTERADM_BIN="${BIN_DIR}clusteradm"
+export CLUSTERADM_BIN=$(dockerBinCmd "clusteradm")
 export SUBCTL_BIN="${BIN_DIR}subctl"
 export KFILT="docker run --rm -i ryane/kfilt"
 
