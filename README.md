@@ -20,6 +20,7 @@ The sections in this document are grouped by the persona that is typically assoc
 ## Pre-requisities
 
 - `docker`: https://www.docker.com/products/docker-desktop/
+- `kind`: https://kind.sigs.k8s.io/
 - `kubectl`: https://kubernetes.io/docs/reference/kubectl/
 - `kustomize`: https://kustomize.io/
 - `helm`: https://helm.sh/docs/intro/install/
